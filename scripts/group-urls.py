@@ -6,34 +6,22 @@ that may constitute different types of (non-)content.
 
 from __future__ import print_function, division
 import sys
-import re
 from collections import defaultdict, Counter
 import random
+
+from likeable_scrapy.cleaning import url_signature
+
 MAX_DISPLAY = 10
 counter = Counter()
 grouped = defaultdict(set)
+
 for l in sys.stdin:
     l = l.strip()
     url = l
-    if '|' in l:
-        l = l.split('|')[-1]
     if '://' not in l:
         continue
 
-    url = re.sub('[0-9]', '0', url)
-    if '?' in url:
-        url, query = url.split('?', 1)
-        query = '&'.join(x.split('=')[0] for x in query.split('&'))
-    else:
-        query = ''
-    _, url = url.split('://', 1)
-    if '/' in url:
-        domain, path = url.split('/', 1)
-    else:
-        domain = url
-        path = ''
-    path = re.sub('[a-zA-Z-]+([0-9a-zA-Z-]*)', 'a', path)
-    key = (path, query)
+    key = url_signature(l)
     group = grouped[key]
     if len(group) == MAX_DISPLAY:
         if random.random() > 1/MAX_DISPLAY:
