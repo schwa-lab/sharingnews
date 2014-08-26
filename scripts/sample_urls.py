@@ -51,6 +51,7 @@ for freq, (domain, pattern, query_params), sig_data in sample:
         for mo, (mo_freq, inst) in sorted(sig_data.items()):
             print(mo_freq, domain, pattern, query_params,
                   mo, inst, file=hist_f, sep='\t')
+        print(file=hist_f)
 
 print(now(), 'Wrote {} URLs from {} clusters'.format(n_items, len(sample)),
       file=sys.stderr)
