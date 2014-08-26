@@ -16,3 +16,10 @@ class LikeableItem(scrapy.Item):
     writeoff = scrapy.Field()
     body_html = scrapy.Field()
     multimedia = scrapy.Field()
+
+
+class MultimediaItem(scrapy.Item):
+    url = scrapy.Field()
+    medium = scrapy.Field()  # static, gif, video, interactive
+    caption = scrapy.Field()
+    credits = scrapy.Field()
