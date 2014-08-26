@@ -1,4 +1,5 @@
 import re
+import tldextract
 
 
 def url_signature(url):
@@ -21,3 +22,7 @@ def url_signature(url):
         domain = domain[4:]
     return domain, path, query
 
+
+def strip_subdomains(domain):
+    r = tldextract.extract(domain)
+    return '{}.{}'.format(r.domain, r.suffix)

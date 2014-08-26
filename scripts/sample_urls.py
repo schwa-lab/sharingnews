@@ -10,7 +10,7 @@ import sys
 from collections import defaultdict
 import random
 import datetime
-from likeable_scrapy.cleaning import url_signature
+from likeable_scrapy.cleaning import url_signature, strip_subdomains
 
 MIN_CLUSTER_SIZE = 30
 now = datetime.datetime.now
@@ -45,7 +45,7 @@ n_items = 0
 os.mkdir(out_dir)
 for freq, (domain, pattern, query_params), sig_data in sample:
     n_items += len(sig_data)
-    with open('{}/{}'.format(out_dir, domain), 'a') as hist_f:
+    with open('{}/{}'.format(out_dir, strip_subdomains(domain)), 'a') as hist_f:
         #print(freq, domain, pattern, query_params,
         #      file=hist_f, sep='\t')
         for mo, (mo_freq, inst) in sorted(sig_data.items()):
