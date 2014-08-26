@@ -30,7 +30,7 @@ for i, l in enumerate(sys.stdin):
     sig = url_signature(l)
     sig_data = sample[sig]
     count, url = sig_data[mo]
-    if not count or random.random() > 1 / (count + 1):
+    if not count or random.random() < 1 / (count + 1):
         url = l
     sig_data[mo] = (count + 1, url)
 
