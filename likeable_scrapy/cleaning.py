@@ -25,4 +25,6 @@ def url_signature(url):
 
 def strip_subdomains(domain):
     r = tldextract.extract(domain)
+    if not r.suffix:
+        return r.domain
     return '{}.{}'.format(r.domain, r.suffix)
