@@ -10,7 +10,10 @@ from __future__ import print_function
 import requests
 import os
 import sys
+import re
 import datetime
+import traceback
+from xml.sax.saxutils import unescape as xml_unescape
 
 now = datetime.datetime.now
 PID = os.getpid()
@@ -22,6 +25,44 @@ def get_mime(resp):
 COMMENTABLE_MIMES = ('html', 'xhtml', 'xml')
 
 
+meta_refresh_re = re.compile('<meta[^>]*?content=["\']([^>]+?url=(.*?))["\'][^>]*', re.DOTALL | re.IGNORECASE)
+
+def get_following_refresh(url, max_delay=20):
+    hops = []
+    refresh = True
+    while refresh is not None:
+        response = requests.get(url, timeout=3)
+        hops.extend(response.history)
+        hops.append(response)
+        if response.status_code >= 400:
+            break
+        refresh = response.headers.get('refresh')
+        if refresh is None:
+            match = meta_refresh_re.search(response.content)
+            if match is not None:
+                tag = match.group(0).lower()
+                if 'http-equiv="refresh' in tag or 'http-equiv=\'refresh' in tag:
+                    refresh = match.group(1)
+
+        if refresh is not None:
+            delay, next_url = refresh.split(';', 1)
+            _, next_url = next_url.split('=', 1)
+            next_url = xml_unescape(next_url)
+            if next_url.startswith('/'):
+                next_url = url[:(url + '/').index('/', 8)] + next_url
+            if next_url.startswith('?'):
+                next_url = url[:(url + '?').index('?')] + next_url
+            if next_url.startswith('#'):
+                next_url = url[:(url + '#').index('#')] + next_url
+            assert next_url.startswith('http')
+            if next_url in (hop.url for hop in hops):
+                break
+            url = next_url
+            if int(delay) > max_delay:
+                refresh = None
+    return hops
+
+
 path = None
 for i, l in enumerate(sys.stdin):
     if i % 100 == 0:
@@ -30,15 +71,20 @@ for i, l in enumerate(sys.stdin):
     ts = now()
     with open(path + '.stat', 'w') as status_f:
         try:
-            response = requests.get(url)
+            hops = get_following_refresh(url)
         except Exception, e:
             print(type(e), url, '', file=status_f, sep='\t')
+            print('ERROR processing', l, file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
             continue
-        for hist_resp in response.history + [response]:
-            print(hist_resp.status_code, hist_resp.url,
-                  get_mime(hist_resp),
+        except KeyboardInterrupt, e:
+            print(type(e), url, '', file=status_f, sep='\t')
+            raise
+        for hop in hops:
+            print(hop.status_code, hop.url, get_mime(hop),
                   file=status_f, sep='\t')
 
+    response = hops[-1]
     with open(path + '.html', 'w') as content_f:
         content_f.write(response.content)
         if get_mime(response).split('/')[-1].lower() in COMMENTABLE_MIMES:
