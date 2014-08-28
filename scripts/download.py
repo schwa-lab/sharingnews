@@ -13,6 +13,7 @@ import sys
 import re
 import datetime
 import traceback
+import urlparse
 from xml.sax.saxutils import unescape as xml_unescape
 
 now = datetime.datetime.now
@@ -31,7 +32,7 @@ def get_following_refresh(url, max_delay=20):
     hops = []
     refresh = True
     while refresh is not None:
-        response = requests.get(url, timeout=3)
+        response = requests.get(url, timeout=10)
         hops.extend(response.history)
         hops.append(response)
         if response.status_code >= 400:
@@ -47,13 +48,7 @@ def get_following_refresh(url, max_delay=20):
         if refresh is not None:
             delay, next_url = refresh.split(';', 1)
             _, next_url = next_url.split('=', 1)
-            next_url = xml_unescape(next_url)
-            if next_url.startswith('/'):
-                next_url = url[:(url + '/').index('/', 8)] + next_url
-            if next_url.startswith('?'):
-                next_url = url[:(url + '?').index('?')] + next_url
-            if next_url.startswith('#'):
-                next_url = url[:(url + '#').index('#')] + next_url
+            next_url = urlparse.urljoin(url, xml_unescape(next_url))
             assert next_url.startswith('http')
             if next_url in (hop.url for hop in hops):
                 break
