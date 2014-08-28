@@ -18,8 +18,9 @@ random = random.Random(0)  # allow some reproducability
 
 out_dir = sys.argv[1]
 assert not os.path.exists(out_dir)
+PER_GROUP = int(sys.argv[2])
 
-sample = defaultdict(lambda: defaultdict(lambda: (0, '')))
+sample = defaultdict(lambda: defaultdict(lambda: (0, [])))
 for i, l in enumerate(sys.stdin):
     if i % 100000 == 0:
         print(now(), 'Sampled from {}'.format(i), file=sys.stderr)
@@ -29,28 +30,33 @@ for i, l in enumerate(sys.stdin):
     mo = l.split('|')[1].rsplit('-', 1)[0]
     sig = url_signature(l)
     sig_data = sample[sig]
-    count, url = sig_data[mo]
-    if not count or random.random() < 1 / (count + 1):
-        url = l
-    sig_data[mo] = (count + 1, url)
+    count, urls = sig_data[mo]
+    if count < PER_GROUP:
+        urls.append(l)
+    else:
+        r = random.randint(0, count)
+        if r < PER_GROUP:
+            urls[r] = l
+    sig_data[mo] = (count + 1, urls)
 
 print(now(), 'Sampled from {}. Writing to {}.'.format(i, out_dir),
       file=sys.stderr)
 
-sample = [(sum(count for count, url in sig_data.itervalues()), sig, sig_data)
+sample = [(sum(count for count, _ in sig_data.itervalues()), sig, sig_data)
           for sig, sig_data in sample.iteritems()]
 sample = [tup for tup in sample if tup[0] >= MIN_CLUSTER_SIZE]
 sample.sort(reverse=True)
 n_items = 0
 os.mkdir(out_dir)
 for freq, (domain, pattern, query_params), sig_data in sample:
-    n_items += len(sig_data)
     with open('{}/{}'.format(out_dir, strip_subdomains(domain)), 'a') as hist_f:
         #print(freq, domain, pattern, query_params,
         #      file=hist_f, sep='\t')
-        for mo, (mo_freq, inst) in sorted(sig_data.items()):
-            print(mo_freq, domain, pattern, query_params,
-                  mo, inst, file=hist_f, sep='\t')
+        for mo, (mo_freq, urls) in sorted(sig_data.items()):
+            n_items += len(urls)
+            for url in urls:
+                print(mo_freq, domain, pattern, query_params,
+                      mo, url, file=hist_f, sep='\t')
         print(file=hist_f)
 
 print(now(), 'Wrote {} URLs from {} clusters'.format(n_items, len(sample)),
