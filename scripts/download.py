@@ -7,6 +7,7 @@ Downloads URLs given file containing:
 on each line.
 """
 from __future__ import print_function
+from collections import defaultdict
 import requests
 import os
 import sys
@@ -14,6 +15,8 @@ import re
 import datetime
 import traceback
 import urlparse
+import random
+import time
 from xml.sax.saxutils import unescape as xml_unescape
 
 now = datetime.datetime.now
@@ -28,11 +31,22 @@ COMMENTABLE_MIMES = ('html', 'xhtml', 'xml')
 
 meta_refresh_re = re.compile('<meta[^>]*?content=["\']([^>]+?url=(.*?))["\'][^>]*', re.DOTALL | re.IGNORECASE)
 
-def get_following_refresh(url, max_delay=20):
+def get_following_refresh(url, accept_encoding, max_delay=20):
     hops = []
     refresh = True
     while refresh is not None:
-        response = requests.get(url, timeout=10)
+        try:
+            response = requests.get(url, timeout=10, headers={'accept-encoding': ', '.join(accept_encoding)})
+        except requests.exceptions.ContentDecodingError as e:
+            enc = re.search('Received response with content-encoding: ([a-z]+),', repr(e))
+            if not enc:
+                raise
+            enc = enc.group(1)
+            if enc not in accept_encodings:
+                raise
+            print('>> Removing encoding {!r} for {!r}'.format(enc, url), file=sys.stderr)
+            accept_encodings.remove(enc)
+            continue
         hops.extend(response.history)
         hops.append(response)
         if response.status_code >= 400:
@@ -59,14 +73,22 @@ def get_following_refresh(url, max_delay=20):
 
 
 path = None
+skipped = 0
+encodings = defaultdict(lambda: ['identity', 'deflate', 'compress', 'gzip'])
 for i, l in enumerate(sys.stdin):
     if i % 100 == 0:
-        print(PID, now(), 'Downloaded {}. Latest to {}'.format(i + 1, path), file=sys.stderr)
+        print(PID, now(), 'Downloaded {}, skipped {}. Latest to {}'.format(i - skipped, skipped, path), file=sys.stderr)
     path, url = l.strip().split('\t')
     ts = now()
+    if os.path.isfile(path + '.stat'):
+        prev_stats = open(path + '.stat').readlines()
+        if prev_stats and (prev_stats[-1].startswith('2') or prev_stats[-1].startswith('4')):
+            skipped += 1
+            continue
     with open(path + '.stat', 'w') as status_f:
+        accept_encodings = encodings[urlparse.urlsplit(url).netloc]
         try:
-            hops = get_following_refresh(url)
+            hops = get_following_refresh(url, accept_encodings)
         except Exception, e:
             print(type(e), url, '', file=status_f, sep='\t')
             print('ERROR processing', l, file=sys.stderr)
@@ -88,4 +110,5 @@ for i, l in enumerate(sys.stdin):
                   '     response in {}s from {} -->'
                   ''.format(ts, url, response.elapsed, response.url),
                   file=content_f)
-print(PID, now(), 'Downloaded {}. Done.'.format(i), file=sys.stderr)
+    time.sleep(random.random())
+print(PID, now(), 'Downloaded {}, skipped {}. Done.'.format(i + 1 - skipped, skipped), file=sys.stderr)
