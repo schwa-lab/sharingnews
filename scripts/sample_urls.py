@@ -28,7 +28,7 @@ for i, l in enumerate(sys.stdin):
         continue
     l = l.rstrip()
     mo = l.split('|')[1].rsplit('-', 1)[0]
-    sig = url_signature(l)
+    sig = url_signature(l.split('|')[-1].strip())
     sig_data = sample[sig]
     count, urls = sig_data[mo]
     if count < PER_GROUP:
@@ -49,6 +49,8 @@ sample.sort(reverse=True)
 n_items = 0
 os.mkdir(out_dir)
 for freq, (domain, pattern, query_params), sig_data in sample:
+    if not domain:
+        continue
     with open('{}/{}'.format(out_dir, strip_subdomains(domain)), 'a') as hist_f:
         #print(freq, domain, pattern, query_params,
         #      file=hist_f, sep='\t')
