@@ -7,6 +7,7 @@ import re
 import urlparse
 import tldextract
 import datetime
+import urllib
 from xml.sax.saxutils import unescape as xml_unescape
 
 now = datetime.datetime.now
@@ -28,8 +29,8 @@ def url_as_diff(new, old):
         return '<same>'
     if new == '-':
         return new
-    old_parse = urlparse.urlparse(old)
-    new_parse = urlparse.urlparse(new)
+    old_parse = urlparse.urlsplit(old)
+    new_parse = urlparse.urlsplit(new)
 
     changed = set()
     for f in old_parse._fields:
@@ -58,18 +59,20 @@ def url_as_diff(new, old):
         old_dirs = old_parse.path[1:].split('/')
         if new_dirs[-1] and new_dirs[-1] == old_dirs[-1]:
             new_dirs[-1] = '<basename>'
-        for i, (new_dir, old_dir) in enumerate(zip(new_dirs, old_dirs)):
-            if new_dir == old_dir:
-                new_dirs[i] = '<dir{}>'.format(i + 1)
+        old_dirs = {d: i for i, d in enumerate(old_dirs)}
+        for i, new_dir in enumerate(new_dirs):
+            if new_dir in old_dirs:
+                new_dirs[i] = '<dir{}>'.format(old_dirs[new_dir] + 1)
         new_parse = new_parse._replace(path='/' + '/'.join(new_dirs))
 
     if old_parse.query and new_parse.query and not new_parse.query.startswith('<'):
         old_query = set(old_parse.query.split('&'))
         new_query = set(new_parse.query.split('&'))
         if new_query > old_query:
-            new_parse = new_parse._replace(query='<query>' + '&' + '&'.join(sorted(new_query - old_query)))
+            new_parse = new_parse._replace(query='<query>' + '&' +
+                                           '&'.join(sorted(map(urllib.urlencode, new_query - old_query))))
 
-    out = urlparse.urlunparse(new_parse)
+    out = new_parse.geturl()
     return out
 
 
