@@ -11,6 +11,8 @@ PARAM_RE = re.compile('((?:;|^)[^=]+=)[^;/]*')
 SLUG_CHARS = r'[\w\s\'",$+()-]'
 SLUG_RE = re.compile(r'(?u){0}*[^\W\d]+{0}*'.format(SLUG_CHARS))
 INT_ID_RE = re.compile(r'\b0+([,_.]0+)+\b|\b0{8}[0-]+\b')
+# approximate RE for file extensions:
+EXT_RE = re.compile(r'(.*)(\.[a-zA-Z]{1,5}[0-9]{0,2})$')
 
 
 def url_signature(url):
@@ -18,6 +20,11 @@ def url_signature(url):
     _, domain, path, query, _ = urlparse.urlsplit(url)
     query = '&'.join(urllib.unquote(x.split('=')[0]) for x in query.split('&'))
     path = urllib.unquote(path)
+    ext_match = EXT_RE.search(path)
+    if ext_match is None:
+        ext = ''
+    else:
+        path, ext = ext_match.groups()
     path = DIGIT_RE.sub('0', path)
     # XXX: unquoting might invent extra '/'s
     path = '/'.join(urllib.unquote(PARAM_RE.sub(r'\1', part))
@@ -29,8 +36,7 @@ def url_signature(url):
     path = INT_ID_RE.sub('ID', path)
     if domain.startswith('www.'):
         domain = domain[4:]
-    assert len(path.split()) == 1, (url, domain, path, query)
-    return domain, path, query
+    return domain, path + ext, query
 
 
 def strip_subdomains(domain):
