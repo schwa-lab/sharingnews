@@ -12,7 +12,7 @@ SLUG_CHARS = r'[\w\s\'",$+()-]'
 SLUG_RE = re.compile(r'(?u){0}*[^\W\d]+{0}*'.format(SLUG_CHARS))
 INT_ID_RE = re.compile(r'\b0+([,_.]0+)+\b|\b0{8}[0-]+\b')
 # approximate RE for file extensions:
-EXT_RE = re.compile(r'(.*)(\.[a-zA-Z]{1,5}[0-9]{0,2})$')
+EXT_RE = re.compile(r'(.*)(\.[a-zA-Z]{1,30}[0-9]{0,2}[a-zA-Z]{0,4})$')
 
 
 def url_signature(url):
