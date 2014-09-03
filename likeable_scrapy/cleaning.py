@@ -18,8 +18,9 @@ EXT_RE = re.compile(r'(.*)(\.[a-zA-Z]{1,5}[0-9]{0,2})$')
 def url_signature(url):
     # TODO: doctests
     _, domain, path, query, _ = urlparse.urlsplit(url)
-    query = '&'.join(urllib.unquote(x.split('=')[0]) for x in query.split('&'))
+    query = '&'.join(x.split('=')[0] for x in query.split('&'))
     path = urllib.unquote(path)
+    # TODO: rewrite with single scanner regex
     ext_match = EXT_RE.search(path)
     if ext_match is None:
         ext = ''
@@ -36,7 +37,7 @@ def url_signature(url):
     path = INT_ID_RE.sub('ID', path)
     if domain.startswith('www.'):
         domain = domain[4:]
-    return domain, path + ext, query
+    return domain, urllib.quote(path + ext), query
 
 
 def strip_subdomains(domain):
