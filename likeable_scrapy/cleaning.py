@@ -8,7 +8,7 @@ from xml.sax.saxutils import unescape as xml_unescape
 DIGIT_RE = re.compile('[0-9]')
 # Standard use of params would require ;, but /a=b/c=d is also used
 PARAM_RE = re.compile('((?:;|^)[^=]+=)[^;/]*')
-SLUG_CHARS = r'[\w\'",$+()-]'
+SLUG_CHARS = r'[\w\s\'",$+()-]'
 SLUG_RE = re.compile(r'(?u){0}*[^\W\d]+{0}*'.format(SLUG_CHARS))
 INT_ID_RE = re.compile(r'\b0+([,_.]0+)+\b|\b0{8}[0-]+\b')
 
@@ -29,6 +29,7 @@ def url_signature(url):
     path = INT_ID_RE.sub('ID', path)
     if domain.startswith('www.'):
         domain = domain[4:]
+    assert len(path.split()) == 1, (url, domain, path, query)
     return domain, path, query
 
 
