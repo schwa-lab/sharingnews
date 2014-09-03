@@ -11,4 +11,4 @@ for l in sys.stdin:
     counter[dt[:7], url_signature(url)] += 1
 
 for (mo, sig), n in counter.iteritems():
-    print(n, mo, '{}{}?{}'.format(*sig))
+    print(n, mo, '{}{}?{}'.format(*sig), sep='\t')
