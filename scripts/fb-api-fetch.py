@@ -5,6 +5,7 @@ import sys
 import re
 import time
 import datetime
+import json
 from itertools import islice
 
 import requests
@@ -18,15 +19,19 @@ RETRY_ERRORS = [2, 4, 17, 341]  # 1
 FAIL_ERRORS = [102, 10, 1609005]
 ERROR_CODE_RE = re.compile(r'"error".*"code":\s*([0-9])', re.DOTALL)
 
+
+ID_RE = re.compile('^[0-9]+$')
+
 class FBAPIError(Exception):
     pass
 
 
-BATCH_SIZE = 24
-
-
-class Getter(object):
-    def __init__(self, wait=1e-9):
+class Fetcher(object):
+    def __init__(self, fields=None, wait=1e-9):
+        if fields:
+            self.params = {'fields': fields}
+        else:
+            self.params = None
         self.wait = wait
         self.n_reqs = 0
         self.n_success = 0
@@ -36,7 +41,7 @@ class Getter(object):
     MAX_WAIT = 1
     MAX_CONTIGUOUS_FAILURE = 10
 
-    def get(self, urls, _depth=1):
+    def _pre(self):
         if self.n_reqs == self.n_report:
             print(now(), 'Made {} requests with wait={:g}s. Success rate: {:.1f}%; {:.1f}s per success'.format(self.n_reqs, self.wait, 100 * self.n_success / self.n_reqs, (time.time() - self.start_time) / self.n_success), file=sys.stderr)
             self.n_report += self.n_report
@@ -44,8 +49,11 @@ class Getter(object):
                 self.n_report += 5000
         time.sleep(self.wait)
         self.n_reqs += 1
+
+    def fetch_comma(self, urls, _depth=1):
+        self._pre()
         resp = requests.get('https://graph.facebook.com/v2.1?access_token={}&ids={}'.format(ACCESS_TOKEN, ','.join(urllib.quote(url) for url in urls)),
-                            timeout=30)
+                            params=self.params, timeout=30)
         out = resp.content
         err = ERROR_CODE_RE.search(out)
         if err is not None:
@@ -59,16 +67,55 @@ class Getter(object):
                     raise RuntimeError('Wait is now {} which exceeds maximum of {}'.format(self.wait, self.MAX_WAIT))
                 if _depth > 2:
                     print(now(), 'Wait is now {} with error:\n{}'.format(self.wait, out), file=sys.stderr)
-                return self.get(urls, _depth=_depth + 1)
+                return self.fetch_comma(urls, _depth=_depth + 1)
             if code == 1:
                 w = 5 * (_depth + 1)
                 print(now(), 'Waiting {}s after code {}'.format(w, code), file=sys.stderr)
                 time.sleep(w)
-                return self.get(urls, _depth=_depth + 1)
+                return self.fetch_comma(urls, _depth=_depth + 1)
             else:
                 raise FBAPIError('Error returned from FB Graph API:\n' + out)
         self.n_success += 1
         return out
+
+    BATCH_FMT = '{"method":"GET","relative_url":%s}'
+
+    def fetch_batch(self, urls, _depth=1):
+        self._pre()
+        batch = '[{}]'.format(','.join(self.BATCH_FMT % json.dumps(url)
+                                       for url in urls))
+        resp = requests.post('https://graph.facebook.com/v2.1',
+                             data={'access_token': ACCESS_TOKEN,
+                                   'include_headers': 'false',
+                                   'batch': batch},
+                             timeout=50)
+        resp = resp.json()
+        assert len(urls) == len(resp)
+        errors = []
+        out = ['{']
+        for url, entry in zip(urls, resp):
+            if entry is None:
+                # FIXME: should retry straight away?
+                body = 'null'
+            else:
+                body = entry[u'body']
+            out.extend([json.dumps(url), ':', body, ','])
+            if u'"error":' in body:
+                errors.append((url, json.loads(body)))
+        if len(errors) == len(urls):
+            if _depth == self.MAX_CONTIGUOUS_FAILURE:
+                raise RuntimeError('{} contiguous failures:'.format(_depth))
+            # no successes
+            print('Retrying with longer wait after all failed with error', *errors,
+                  file=sys.stderr, sep='\n')
+            self.wait *= 2
+            return self.fetch_batch(urls, _depth=_depth + 1)
+        if out[-1] == '{':
+            out.append('}')
+        elif out[-1] == ',':
+            out[-1] = '}'
+        self.n_success += 1
+        return ''.join(out)
 
 def iter_lines(f, resume=None):
     seen = set()
@@ -83,19 +130,32 @@ def iter_lines(f, resume=None):
             continue
         seen.add(l)
         l = l.rstrip('\n\r')
-        assert l.startswith('http')
+        assert l.startswith('http') or ID_RE.match(l)
         yield l
 
 if __name__ == '__main__':
-    getter = Getter()
-    resume = sys.argv[1] if len(sys.argv) > 1 else None
-    print(now(), 'Reading from stdin with resume at', resume, file=sys.stderr)
-    url_iter = iter_lines(sys.stdin, resume)
-    urls = list(islice(url_iter, BATCH_SIZE))
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument('-r', '--resume', default=None,
+                    help='Skip input until this entry is read')
+    ap.add_argument('--comma', default=False, action='store_true',
+                    help='Use FB Graph API\'s comma-based multiple-ID syntax')
+    ap.add_argument('-b', '--batch-size', default=24, type=int)
+    ap.add_argument('-f', '--fields', default=None,
+                    help='Select only these fields')
+    args = ap.parse_args()
+
+    if args.fields is not None and not args.comma:
+        ap.error('Require --comma to use fields')
+    getter = Fetcher(fields=args.fields)
+    print(now(), 'Reading from stdin with resume at', args.resume, file=sys.stderr)
+    url_iter = iter_lines(sys.stdin, args.resume)
+    urls = list(islice(url_iter, args.batch_size))
+    fetch = getter.fetch_comma if args.comma else getter.fetch_batch
     while urls:
         try:
-            print(getter.get(urls))
+            print(fetch(urls))
         except:
             print(now(), 'While fetching:', urls, sep='\n', file=sys.stderr)
             raise
-        urls = list(islice(url_iter, BATCH_SIZE))
+        urls = list(islice(url_iter, args.batch_size))
