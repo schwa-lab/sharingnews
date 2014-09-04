@@ -22,7 +22,7 @@ class FBAPIError(Exception):
     pass
 
 
-BATCH_SIZE = 18
+BATCH_SIZE = 24
 
 
 class Getter(object):
@@ -49,20 +49,21 @@ class Getter(object):
         out = resp.content
         err = ERROR_CODE_RE.search(out)
         if err is not None:
+            if _depth == self.MAX_CONTIGUOUS_FAILURE:
+                raise RuntimeError('{} contiguous failures'.format(_depth))
             code = int(err.group(1))
             if code in RETRY_ERRORS:
                 print('Retrying with longer wait after error', code, file=sys.stderr)
                 self.wait *= 2
                 if self.wait > self.MAX_WAIT:
                     raise RuntimeError('Wait is now {} which exceeds maximum of {}'.format(self.wait, self.MAX_WAIT))
-                if _depth == self.MAX_CONTIGUOUS_FAILURE:
-                    raise RuntimeError('{} contiguous failures'.format(_depth))
                 if _depth > 2:
                     print(now(), 'Wait is now {} with error:\n{}'.format(self.wait, out), file=sys.stderr)
                 return self.get(urls, _depth=_depth + 1)
             if code == 1:
-                print(now(), 'Long wait after code', code, file=sys.stderr)
-                time.sleep(20)
+                w = 5 * (_depth + 1)
+                print(now(), 'Waiting {}s after code {}'.format(w, code), file=sys.stderr)
+                time.sleep(w)
                 return self.get(urls, _depth=_depth + 1)
             else:
                 raise FBAPIError('Error returned from FB Graph API:\n' + out)
@@ -78,7 +79,7 @@ def iter_lines(f, resume=None):
                 resume = None
             else:
                 continue
-        if l in seen:
+        if l.startswith('#') or l in seen:
             continue
         seen.add(l)
         l = l.rstrip('\n\r')
