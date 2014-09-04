@@ -49,9 +49,9 @@ class Getter(object):
         out = resp.content
         err = ERROR_CODE_RE.search(out)
         if err is not None:
-            if _depth == self.MAX_CONTIGUOUS_FAILURE:
-                raise RuntimeError('{} contiguous failures'.format(_depth))
             code = int(err.group(1))
+            if _depth == self.MAX_CONTIGUOUS_FAILURE:
+                raise RuntimeError('{} contiguous failures: code {}'.format(_depth, code))
             if code in RETRY_ERRORS:
                 print('Retrying with longer wait after error', code, file=sys.stderr)
                 self.wait *= 2
@@ -96,6 +96,6 @@ if __name__ == '__main__':
         try:
             print(getter.get(urls))
         except:
-            print('While fetching:', urls, sep='\n', file=sys.stderr)
+            print(now(), 'While fetching:', urls, sep='\n', file=sys.stderr)
             raise
         urls = list(islice(url_iter, BATCH_SIZE))
