@@ -39,7 +39,7 @@ class Fetcher(object):
         self.n_report = 5
 
     MAX_WAIT = 1
-    MAX_CONTIGUOUS_FAILURE = 10
+    MAX_CONTIGUOUS_FAILURE = 20
 
     def _pre(self):
         if self.n_reqs == self.n_report:
@@ -69,7 +69,7 @@ class Fetcher(object):
                 self.wait *= 2
                 if self.wait > self.MAX_WAIT:
                     raise RuntimeError('Wait is now {} which exceeds maximum of {}'.format(self.wait, self.MAX_WAIT))
-                if _depth in (3, 6, 9):
+                if _depth and _depth % 4 == 0:
                     print(now(), 'Wait is now {} with error:\n{}'.format(self.wait, out), file=sys.stderr)
                     time.sleep(20)
                 return self.fetch_comma(urls, _depth=_depth + 1)
@@ -113,7 +113,7 @@ class Fetcher(object):
             if u'"error":' in body:
                 errors.append((url, json.loads(body)))
         if len(errors) == len(urls):
-            if _depth in (3, 6, 9):
+            if _depth and _depth % 4 == 0:
                 time.sleep(30)
             if _depth == self.MAX_CONTIGUOUS_FAILURE:
                 raise RuntimeError('{} contiguous failures:'.format(_depth))
