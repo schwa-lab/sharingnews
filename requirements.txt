@@ -1,3 +1,7 @@
 scrapy
 requests
 tldextract
+django
+django-debug-toolbar
+django-extensions
+djorm-ext-pgfulltext
