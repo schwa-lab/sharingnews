@@ -15,7 +15,7 @@ now = datetime.datetime.now
 ACCESS_TOKEN = '1542059102694981|snItY58M0f9cwDP0OFECJRsEkKE'  # from facebook.get_app_access_token == grant_type=client_credentials
 
 
-RETRY_ERRORS = [2, 4, 17, 341]  # 1
+RETRY_ERRORS = [-1, 2, 4, 17, 341]  # 1 ; -1 is our own
 FAIL_ERRORS = [102, 10, 1609005]
 ERROR_CODE_RE = re.compile(r'"error".*"code":\s*([0-9])', re.DOTALL)
 
@@ -52,21 +52,26 @@ class Fetcher(object):
 
     def fetch_comma(self, urls, _depth=1):
         self._pre()
-        resp = requests.get('https://graph.facebook.com/v2.1?access_token={}&ids={}'.format(ACCESS_TOKEN, ','.join(urllib.quote(url) for url in urls)),
-                            params=self.params, timeout=30)
-        out = resp.content
-        err = ERROR_CODE_RE.search(out)
-        if err is not None:
-            code = int(err.group(1))
+        try:
+            resp = requests.get('https://graph.facebook.com/v2.1?access_token={}&ids={}'.format(ACCESS_TOKEN, ','.join(urllib.quote(url) for url in urls)),
+                                params=self.params, timeout=30)
+        except requests.Timeout:
+            code = -1
+        else:
+            out = resp.content
+            err = ERROR_CODE_RE.search(out)
+            code = None if err is None else int(err.group(1))
+        if code is not None:
             if _depth == self.MAX_CONTIGUOUS_FAILURE:
                 raise RuntimeError('{} contiguous failures: code {}'.format(_depth, code))
             if code in RETRY_ERRORS:
-                print('Retrying with longer wait after error', code, file=sys.stderr)
+                print(now(), 'Retrying with longer wait after error', code, file=sys.stderr)
                 self.wait *= 2
                 if self.wait > self.MAX_WAIT:
                     raise RuntimeError('Wait is now {} which exceeds maximum of {}'.format(self.wait, self.MAX_WAIT))
-                if _depth > 2:
+                if _depth in (3, 6, 9):
                     print(now(), 'Wait is now {} with error:\n{}'.format(self.wait, out), file=sys.stderr)
+                    time.sleep(20)
                 return self.fetch_comma(urls, _depth=_depth + 1)
             if code == 1:
                 w = 5 * (_depth + 1)
@@ -84,11 +89,16 @@ class Fetcher(object):
         self._pre()
         batch = '[{}]'.format(','.join(self.BATCH_FMT % json.dumps(url)
                                        for url in urls))
-        resp = requests.post('https://graph.facebook.com/v2.1',
-                             data={'access_token': ACCESS_TOKEN,
-                                   'include_headers': 'false',
-                                   'batch': batch},
-                             timeout=50)
+        try:
+            resp = requests.post('https://graph.facebook.com/v2.1',
+                                 data={'access_token': ACCESS_TOKEN,
+                                       'include_headers': 'false',
+                                       'batch': batch},
+                                 timeout=50)
+        except requests.Timeout:
+            if _depth == self.MAX_CONTIGUOUS_FAILURE:
+                raise
+            return self.fetch_batch(urls, _depth=_depth + 1)
         resp = resp.json()
         assert len(urls) == len(resp)
         errors = []
@@ -103,10 +113,12 @@ class Fetcher(object):
             if u'"error":' in body:
                 errors.append((url, json.loads(body)))
         if len(errors) == len(urls):
+            if _depth in (3, 6, 9):
+                time.sleep(30)
             if _depth == self.MAX_CONTIGUOUS_FAILURE:
                 raise RuntimeError('{} contiguous failures:'.format(_depth))
             # no successes
-            print('Retrying with longer wait after all failed with error', *errors,
+            print(now(), 'Retrying with longer wait after all failed with error', *errors,
                   file=sys.stderr, sep='\n')
             self.wait *= 2
             return self.fetch_batch(urls, _depth=_depth + 1)
@@ -142,7 +154,8 @@ if __name__ == '__main__':
                     help='Use FB Graph API\'s comma-based multiple-ID syntax')
     ap.add_argument('-b', '--batch-size', default=24, type=int)
     ap.add_argument('-f', '--fields', default=None,
-                    help='Select only these fields')
+                    help='Select only these fields. E.g. '
+                         'id,created_time,type,image,site_name,data,video')
     args = ap.parse_args()
 
     if args.fields is not None and not args.comma:
