@@ -15,7 +15,7 @@ now = datetime.datetime.now
 ACCESS_TOKEN = '1542059102694981|snItY58M0f9cwDP0OFECJRsEkKE'  # from facebook.get_app_access_token == grant_type=client_credentials
 
 
-RETRY_ERRORS = [-1, 2, 4, 17, 341]  # 1 ; -1 is our own
+RETRY_ERRORS = [-2, -1, 2, 4, 17, 341]  # 1 ; -1 is our own
 FAIL_ERRORS = [102, 10, 1609005]
 ERROR_CODE_RE = re.compile(r'"error".*"code":\s*([0-9])', re.DOTALL)
 
@@ -43,10 +43,11 @@ class Fetcher(object):
 
     def _pre(self):
         if self.n_reqs == self.n_report:
-            print(now(), 'Made {} requests with wait={:g}s. Success rate: {:.1f}%; {:.1f}s per success'.format(self.n_reqs, self.wait, 100 * self.n_success / self.n_reqs, (time.time() - self.start_time) / self.n_success), file=sys.stderr)
-            self.n_report += self.n_report
-            if self.n_report > 5000:
-                self.n_report += 5000
+            print(now(), 'Made {} requests with wait={:g}s. Success rate: {:.1f}%; {:.1f}s per success'.format(self.n_reqs, self.wait, 100 * self.n_success / self.n_reqs, (time.time() - self.start_time) / self.n_success if self.n_success else 0), file=sys.stderr)
+            if self.n_report > 500:
+                self.n_report += 500
+            else:
+                self.n_report += self.n_report
         time.sleep(self.wait)
         self.n_reqs += 1
 
@@ -55,13 +56,17 @@ class Fetcher(object):
         try:
             resp = requests.get('https://graph.facebook.com/v2.1?access_token={}&ids={}'.format(ACCESS_TOKEN, ','.join(urllib.quote(url) for url in urls)),
                                 params=self.params, timeout=30)
-        except requests.Timeout:
+        except (requests.Timeout, requests.ConnectionError) as e:
+            print(now(), repr(e))
             code = -1
         else:
             out = resp.content
             err = ERROR_CODE_RE.search(out)
             code = None if err is None else int(err.group(1))
         if code is not None:
+            if (code == 1 or _depth == self.MAX_CONTIGUOUS_FAILURE // 2) and not self.params:
+                # backoff
+                return self.fetch_batch(urls)
             if _depth == self.MAX_CONTIGUOUS_FAILURE:
                 raise RuntimeError('{} contiguous failures: code {}'.format(_depth, code))
             if code in RETRY_ERRORS:
@@ -95,7 +100,8 @@ class Fetcher(object):
                                        'include_headers': 'false',
                                        'batch': batch},
                                  timeout=50)
-        except requests.Timeout:
+        except (requests.Timeout, requests.ConnectionError) as e:
+            print(now(), repr(e))
             if _depth == self.MAX_CONTIGUOUS_FAILURE:
                 raise
             return self.fetch_batch(urls, _depth=_depth + 1)
