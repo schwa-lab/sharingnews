@@ -7,46 +7,66 @@ from xml.sax.saxutils import unescape as xml_unescape
 
 DIGIT_RE = re.compile('[0-9]')
 # Standard use of params would require ;, but /a=b/c=d is also used
-PARAM_RE = re.compile('((?:;|^)[^=]+=)[^;/]*')
+# PATH_PARAM_RE = re.compile('((?:;|/)[^=]+=)[^;/]*')  # for sub \1
 SLUG_CHARS = r'[\w\s\'",$+()-]'
 SLUG_RE = re.compile(r'(?u){0}*[^\W\d]+{0}*'.format(SLUG_CHARS))
-INT_ID_RE = re.compile(r'\b0+([,_.]0+)+\b|\b0{8}[0-]+\b')
+INT_ID_RE = re.compile(r'\b\d+([,_.]\d+)+\b|\b\d{8}[\d-]+\b')
 # approximate RE for file extensions:
-EXT_RE = re.compile(r'(.*)(\.[a-zA-Z]{1,30}[0-9]{0,2}[a-zA-Z]{0,4})$')
+EXT_RE = re.compile(r'(\.[a-zA-Z]{1,30}[0-9]{0,2}[a-zA-Z]{0,4})$')
+PATH_PARAM_RE = re.compile('=[^;/]*')  # for sub ''
+PATHSIG_RE = re.compile('(?u)(?:'
+                        '(?P<_ext>{EXT_RE.pattern})|'
+                        '(?P<param>{PATH_PARAM_RE.pattern})|'
+                        '(?P<slug>{SLUG_RE.pattern})|'
+                        '(?P<id>{INT_ID_RE.pattern})|'
+                        '(?P<digits>{DIGIT_RE.pattern}+)|'
+                        '(?P<_other>.*?)'
+                        ')'.format(**locals()))
+QUERY_PARAM_RE = re.compile('=[^&]*')
+
+
+def path_sig_cb(m, sub={'param': '', 'slug': 'a', 'id': 'ID'}):
+    #print(m.group(), m.lastgroup)
+    if m.lastgroup[0] == '_':
+        return m.group()
+    if m.lastgroup == 'digits':
+        return '0' * (m.end() - m.start())
+
+    return sub[m.lastgroup]
 
 
 def url_signature(url):
     # TODO: doctests
     _, domain, path, query, _ = urlparse.urlsplit(url)
-    query = '&'.join(x.split('=')[0] for x in query.split('&'))
-    path = urllib.unquote(path)
-    # TODO: rewrite with single scanner regex
-    ext_match = EXT_RE.search(path)
-    if ext_match is None:
-        ext = ''
-    else:
-        path, ext = ext_match.groups()
-    path = DIGIT_RE.sub('0', path)
+    path = PATH_PARAM_RE.sub('', path)
     # XXX: unquoting might invent extra '/'s
-    path = '/'.join(urllib.unquote(PARAM_RE.sub(r'\1', part))
-                    for part in path.split('/'))
+    path = urllib.unquote(path)
     try:
-        path = SLUG_RE.sub('a', path.decode('utf8')).encode('utf8')
+        path = PATHSIG_RE.sub(path_sig_cb, path.decode('utf8')).encode('utf8')
     except UnicodeDecodeError:
-        path = SLUG_RE.sub('a', path)
-    path = INT_ID_RE.sub('ID', path)
+        path = PATHSIG_RE.sub(path_sig_cb, path)
     if domain.startswith('www.'):
         domain = domain[4:]
-    return domain, urllib.quote(path + ext), query
+    query = QUERY_PARAM_RE.sub('', query)
+    return domain, urllib.quote(path).replace('%3B', ';'), query
 
 
 def strip_subdomains(domain):
     if '//' in domain:
         domain = domain.split('/', 3)[2]
+    try:
+        return strip_subdomains._cache[domain]
+    except AttributeError:
+        strip_subdomains._cache = {}
+    except KeyError:
+        pass
     r = tldextract.extract(domain)
-    if not r.suffix:
-        return r.domain
-    return '{}.{}'.format(r.domain, r.suffix)
+    if r.suffix:
+        out = '{}.{}'.format(r.domain, r.suffix)
+    else:
+        out = r.domain
+    strip_subdomains._cache[domain] = out
+    return out
 
 CANONICAL_TAG_RE = re.compile(r'(?i)<link\b[^>]*\brel=.canonical[^>]*')
 CANONICAL_URL_RE = re.compile(r'(?<=\bhref=["\']).*?(?=["\'])')
