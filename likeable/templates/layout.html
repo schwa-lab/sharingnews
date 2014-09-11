@@ -1,38 +1,17 @@
+{% load staticfiles %}
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 	<head>
 		<title>{% block title %}{{title}}{% endblock %}</title>
-		<link rel="stylesheet" href="{% url static 'css/reset.css' %}" type="text/css">
-		<link rel="stylesheet" href="{% url static 'css/site.css' %}" type="text/css">
+        <link rel="stylesheet" href="{% static 'css/reset.css' %}" type="text/css">
+        <link rel="stylesheet" href="{% static 'css/site.css' %}" type="text/css">
 		{% block css %}{% endblock %}
-		<script type="text/javascript" src="{% url static 'js/jquery.js' %}"></script>
+        <script type="text/javascript" src="{% static 'js/jquery.js' %}"></script>
 	</head>
 	<body>
 		{% block header %}
 		<header>
-			<a href="{% url home %}"><img id="logo" src="{% url static 'img/smh_logo.png' %}" height="59" width="185"></a>
-			{% block header_title %}<h1>{{title}}</h1>{% endblock %}
-			<div id="nav_container">
-			<nav>
-				<ul>
-					{% if user.is_authenticated %}
-						<li id="username">{{user.username}}</li>
-						<li id="logout"><a href="{% url logout %}">logout</a></li>
-					{% else %}
-						<li><a href="{% url login %}">login</a></li>
-					{% endif %}
-					{% if perms.annotation %}
-						<li><a href="{% url annotation:list %}">annotation</a></li>
-					{% endif %}
-					{% if user.is_staff %}
-						<li><a href="{% url admin:index %}">admin</a></li>
-                        {% if annotation_users %}<li>{% include "annotation/view_user_sel.html" %}</li>{% endif %}
-					{% endif %}
-					<li><a href="{% url api %}">api</a></li>
-				</ul>
-			</nav>
-			</div>
 		</header>
 		{% endblock %}
 

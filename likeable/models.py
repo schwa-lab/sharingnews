@@ -7,11 +7,11 @@ class UrlSignature(models.Model):
     signature = models.CharField(max_length=256, unique=True, db_index=True)  # not sure if it's a good idea to use this as a string primary key. would make SpideredUrl big.
     base_domain = models.CharField(max_length=50, db_index=True)  # oversized due to broken data :(
 
-    body_html_selector = models.CharField(max_length=500)
-    headline_selector = models.CharField(max_length=500)
-    dateline_selector = models.CharField(max_length=500)
-    byline_selector = models.CharField(max_length=500)
-    media_selector = models.CharField(max_length=500)
+    body_html_selector = models.CharField(max_length=1000, null=True)
+    headline_selector = models.CharField(max_length=1000, null=True)
+    dateline_selector = models.CharField(max_length=1000, null=True)
+    byline_selector = models.CharField(max_length=1000, null=True)
+    media_selector = models.CharField(max_length=1000, null=True)
 
     # require match zero or one object, except media_selector
     # when changed, rerun over signature dev articles; maybe should store stats with selectors
@@ -63,6 +63,18 @@ class Article(models.Model):
 
     def get_absolute_url(self):
         return reverse('likeable.views.article', kwargs={'id': self.id})
+
+    def read_html(self):
+        # TODO: read from disk or fetch (cached or downloaded permanently)
+        pass
+
+    def get_meta_fields(self):
+        # TODO: extract <meta name/content> pairs from read_html()
+        pass
+
+    def get_css_extractions(self):
+        # TODO
+        pass
 
 
 class FacebookStat(object):

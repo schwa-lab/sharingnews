@@ -35,13 +35,16 @@ CREATE TABLE articletmp (id BIGINT, url VARCHAR(1000), fb_updated TIMESTAMP, fb_
 EXPLAIN ANALYZE INSERT INTO articletmp (id, url, fb_updated, fb_type, title, description, total_shares)
     SELECT (blob->'og_object'->>'id')::bigint, blob->'og_object'->>'url', (blob->'og_object'->>'updated_time')::timestamp, blob->'og_object'->>'type', blob->'og_object'->>'title', blob->'og_object'->>'description', (blob->'share'->>'share_count')::bigint FROM jsontmp;
 
+EXPLAIN ANALYZE UPDATE articletmp SET title = NULL WHERE LEFT(title, 5) = "http:" OR LEFT(title, 6) = "https:"
+
 \\echo \`date\`
 EXPLAIN ANALYZE INSERT INTO likeable_article (id, url, fb_updated, fb_type, fb_has_title, title, description, total_shares, url_signature_id)
     SELECT DISTINCT ON (id) t.id, t.url, fb_updated, fb_type, title IS NOT NULL, title, description, total_shares, url_signature_id
-    FROM articletmp t LEFT JOIN likeable_spideredurl s ON t.url = s.url;
+    FROM articletmp t LEFT JOIN likeable_spideredurl s ON t.url = s.url
+    WHERE t.id IS NOT NULL and t.url IS NOT NULL;
 
 \\echo \`date\`
-EXPLAIN ANALYZE UPDATE likeable_spideredurl SET article_id = (blob->'og_object'->>'id')::int FROM jsontmp WHERE blob->>'_id' = likeable_spideredurl.url;
+EXPLAIN ANALYZE UPDATE likeable_spideredurl SET article_id = (blob->'og_object'->>'id')::bigint FROM jsontmp WHERE blob->>'_id' = likeable_spideredurl.url;
 
 \\echo \`date\`
 --DROP TABLE jsontmp;

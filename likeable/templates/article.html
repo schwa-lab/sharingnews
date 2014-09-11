@@ -7,16 +7,16 @@
     {% if article.fb_created %}<dt>FB created</dt><dd>{{article.fb_created}}</dd>{% endif %}
     {% if article.fb_type %}<dt>FB type</dt><dd>{{article.fb_type}}</dd>{% endif %}
     <dt>URL</dt><dd><a href="{{article.url|iriencode}}">{{article.url}}</a></dd>
-    <dt>URL signature</dt><dd><a href="{% url collection sig=article.url_signature.signature %}">article.url_signature.signature</a></dd>
-    <dt>Domain</dt><dd><a href="{% url collection sig=article.url_signature.base_domain %}">article.url_signature.base_domain</a> / </dd>
+    <dt>URL signature</dt><dd><a href="{% url 'collection' sig=article.url_signature.signature %}">article.url_signature.signature</a></dd>
+    <dt>Domain</dt><dd><a href="{% url 'collection' sig=article.url_signature.base_domain %}">article.url_signature.base_domain</a> / </dd>
     <dt>Facebook Graph</dt><dd><a href="http://graph.facebook.com/{{article.id}}">{{article.id}}</a></dd>
     <dt>FB total shares</dt><dd>{{article.total_shares}} (Updated {{article.fb_updated}})</dd>
 </dl>
 
 <h2>Incoming URLs</h2>
 <ul>
-{% for spurl in article.spideredurl_set %}
-<li><a href="{{spurl.url|iriencode}}">{{spurl.url}}</a> {% for sw in spurl.sharewarsurl_set %}{% url article_by_swid sw.id %}@{{sw.when}}{% if not loop.last %}, {% endif %}{% endfor %}</li>
+{% for spurl in article.spideredurl_set.all %}
+<li><a href="{{spurl.url|iriencode}}">{{spurl.url}}</a> {% for sw in spurl.sharewarsurl_set.all %}{% url 'article_by_swid' sw.id %}@{{sw.when}}{% if not loop.last %}, {% endif %}{% endfor %}</li>
 {% endfor %}
 </ul>
 
