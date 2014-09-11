@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from __future__ import print_function, division
 
 import urllib
@@ -57,14 +58,14 @@ class Fetcher(object):
             resp = requests.get('https://graph.facebook.com/v2.1?access_token={}&ids={}'.format(ACCESS_TOKEN, ','.join(urllib.quote(url) for url in urls)),
                                 params=self.params, timeout=30)
         except (requests.Timeout, requests.ConnectionError) as e:
-            print(now(), repr(e))
             code = -1
+            out = repr(e)
         else:
             out = resp.content
             err = ERROR_CODE_RE.search(out)
             code = None if err is None else int(err.group(1))
         if code is not None:
-            if (code == 1 or _depth == self.MAX_CONTIGUOUS_FAILURE // 2) and not self.params:
+            if (code == 1 or code not in RETRY_ERRORS or _depth == self.MAX_CONTIGUOUS_FAILURE // 2):
                 # backoff
                 return self.fetch_batch(urls)
             if _depth == self.MAX_CONTIGUOUS_FAILURE:
@@ -101,7 +102,7 @@ class Fetcher(object):
                                        'batch': batch},
                                  timeout=50)
         except (requests.Timeout, requests.ConnectionError) as e:
-            print(now(), repr(e))
+            print(now(), repr(e), file=sys.stderr)
             if _depth == self.MAX_CONTIGUOUS_FAILURE:
                 raise
             return self.fetch_batch(urls, _depth=_depth + 1)
