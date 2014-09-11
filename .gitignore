@@ -17,3 +17,4 @@ editor/node_modules
 java/client/src/test/testresult.txt
 java/client/target
 setuptools_git-*
+secret.py
