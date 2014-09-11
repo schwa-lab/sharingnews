@@ -1,0 +1,37 @@
+article {
+    padding: 2em;
+}
+
+h1, h2, h3, h4, h5 {
+    font-weight: bold;
+    margin-top: .5em;
+    margin-bottom: .2em;
+}
+h1 { font-size: 200%; }
+h2 { font-size: 150%; }
+h3 { font-size: 120%; }
+h4 { font-size: 110%; }
+
+dl {
+ width:100%;
+ overflow:hidden;
+}
+dt {
+ clear:left;
+ float:left;
+ width:20%; /* adjust the width; make sure the total of both is 100% */
+ padding-bottom: .5em;
+}
+dd {
+ float:left;
+ width:80%; /* adjust the width; make sure the total of both is 100% */
+ padding-bottom: .5em;
+}
+
+iframe.ext-page {
+    margin: 1em auto;
+    display: block;
+    width: 90%;
+    overflow: auto;
+    min-height: 20em;
+}
