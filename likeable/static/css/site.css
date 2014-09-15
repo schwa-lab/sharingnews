@@ -35,3 +35,10 @@ iframe.ext-page {
     overflow: auto;
     min-height: 20em;
 }
+
+td, th {
+    padding: .2em .3em;
+}
+th {
+    font-weight: bold;
+}

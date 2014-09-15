@@ -16,7 +16,7 @@
 <h2>Incoming URLs</h2>
 <ul>
 {% for spurl in article.spideredurl_set.all %}
-<li><a href="{{spurl.url|iriencode}}">{{spurl.url}}</a> {% for sw in spurl.sharewarsurl_set.all %}{% url 'article_by_swid' sw.id %}@{{sw.when}}{% if not loop.last %}, {% endif %}{% endfor %}</li>
+<li><a href="{{spurl.url|iriencode}}">{{spurl.url}}</a> (SW: {% for sw in spurl.sharewarsurl_set.all %}<a href="{% url 'article_by_swid' sw.id %}">{{sw.id}}</a>@{{sw.when}}{% if not loop.last %}, {% endif %}{% endfor %})</li>
 {% endfor %}
 </ul>
 

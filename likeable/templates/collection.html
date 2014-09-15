@@ -1,0 +1,29 @@
+{% extends "layout.html" %}
+{% block content %}
+<h1>{% if params.sig %}{{params.sig}}{% else %}All domains{% endif %}
+{% if params.period %}in {{params.period}}{% endif %}
+{% if params.start and params.end %}in {{params.start}} to {{params.end}}{% elif params.start %}since {{params.start}}{% elif params.end %}until {{params.end}}{% endif %}
+</h1>
+
+<h2>Total shares summary</h2>
+<table>
+    <thead><tr><th>Bin freq</th><th>Min</th><th>Max</th><th>Avg</th><th>Example</th></tr></thead>
+    <tbody>
+    {% for bin in share_bins %}
+    <tr><td>{{bin.count}}</td><td>{{bin.min}}</td><td>{{bin.max}}</td><td>{{bin.avg|floatformat:1}}</td><td><a href="{{ bin.example.get_absolute_url|iriencode }}">{{bin.example.title|default:'title missing'}}</a> (<a href="{{bin.example.url|iriencode}}">{{bin.example.url_signature.base_domain}}</a>)</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+{% if subdivisions %}
+<h2>Subdivision</h2>
+<table>
+    <tbody>
+    {% for sig, count in subdivisions %}
+    <tr><td>{{count}}</td><td><a href="{% url 'collection' sig=sig start=params.start|default:'' end=params.end|default:'' %}">{{sig}}</a></td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+{% endblock %}

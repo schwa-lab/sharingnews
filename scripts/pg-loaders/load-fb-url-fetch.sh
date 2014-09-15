@@ -44,7 +44,8 @@ EXPLAIN ANALYZE INSERT INTO likeable_article (id, url, fb_updated, fb_type, fb_h
     WHERE t.id IS NOT NULL and t.url IS NOT NULL;
 
 \\echo \`date\`
-EXPLAIN ANALYZE UPDATE likeable_spideredurl SET article_id = (blob->'og_object'->>'id')::bigint FROM jsontmp WHERE blob->>'_id' = likeable_spideredurl.url;
+EXPLAIN ANALYZE UPDATE likeable_spideredurl SET article_id = (blob->'og_object'->>'id')::bigint
+	FROM jsontmp WHERE blob->>'_id' = likeable_spideredurl.url;
 
 \\echo \`date\`
 --DROP TABLE jsontmp;
