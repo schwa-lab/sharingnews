@@ -26,12 +26,14 @@ CREATE TABLE spidertmp (swid BIGINT, "when" TIMESTAMP, url CHAR(1000), signature
 \\copy spidertmp FROM '$tmpdir/pipe' DELIMITER '|';
 \\echo \`date\`
 INSERT INTO likeable_urlsignature (signature, base_domain)
-    SELECT DISTINCT ON (signature) signature, base_domain FROM spidertmp
-    WHERE CHAR_LENGTH(base_domain) < 50 AND CHAR_LENGTH(signature) < 256; -- discard noise
+	SELECT DISTINCT ON (signature) signature, base_domain FROM spidertmp
+    WHERE CHAR_LENGTH(base_domain) < 50 AND CHAR_LENGTH(signature) < 256 -- discard noise
+	AND NOT EXISTS (SELECT 'X' FROM likeable_urlsignature WHERE likeable_urlsignature.signature = spidertmp.signature)
 \\echo \`date\`
 INSERT INTO likeable_spideredurl (url, url_signature_id)
-    SELECT DISTINCT ON (spidertmp.url) spidertmp.url, likeable_urlsignature.id
-    FROM spidertmp LEFT JOIN likeable_urlsignature ON spidertmp.signature = likeable_urlsignature.signature;
+	SELECT DISTINCT ON (spidertmp.url) spidertmp.url, likeable_urlsignature.id
+    FROM spidertmp LEFT JOIN likeable_urlsignature ON spidertmp.signature = likeable_urlsignature.signature
+	WHERE NOT EXISTS (SELECT 'X' FROM likeable_spideredurl WHERE likeable_spideredurl.url = spidertmp.url);
 \\echo \`date\`
 INSERT INTO likeable_sharewarsurl (id, "when", spidered_id)
     SELECT spidertmp.swid, spidertmp."when", likeable_spideredurl.id
