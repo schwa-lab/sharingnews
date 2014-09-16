@@ -1,12 +1,35 @@
 
 from __future__ import print_function, absolute_import, division
+import re
+import logging
+
+from lxml import etree
+from scrapy.selector import csstranslator
+
 from django.db import models
 from django.core.urlresolvers import reverse
+
+logger = logging.getLogger(__name__)
 
 
 class UrlSignatureManager(models.Manager):
     def for_base_domain(self, domain):
         return self.filter(base_domain=domain)
+
+
+class _css_to_xpath_descriptor(object):
+    def __init__(self, field):
+        self.field = field
+
+    def __get__(self, obj, objtype=None,
+                translator=csstranslator.ScrapyHTMLTranslator()):
+        if obj is None:
+            return self
+        css_sel = getattr(obj, self.field)
+        if css_sel is None:
+            return None
+        # TODO: lrucache on objtype
+        return str(translator.css_to_xpath(css_sel))
 
 
 class UrlSignature(models.Model):
@@ -20,21 +43,15 @@ class UrlSignature(models.Model):
     byline_selector = models.CharField(max_length=1000, null=True)
     media_selector = models.CharField(max_length=1000, null=True)
 
-    # require match zero or one object, except media_selector
+    # ?require match zero or one object, except media_selector
     # when changed, rerun over signature dev articles; maybe should store stats with selectors
 
-
-class WeekCountAggregate(models.sql.aggregates.Aggregate):
-    is_ordinal = True
-    sql_function = '' # unused
-    sql_template = "COUNT(%(field)s)"
-
-
-class WeekCount(models.aggregates.Aggregate):
-    name = 'Week'
-    def add_to_query(self, query, alias, col, source, is_summary):
-        query.aggregates[alias] = WeekCountAggregate(col, source=source, 
-            is_summary=is_summary, **self.extra)
+    # Accessors for converted form
+    body_html_xpath = _css_to_xpath_descriptor('body_html_selector')
+    headline_xpath = _css_to_xpath_descriptor('headline_selector')
+    dateline_xpath = _css_to_xpath_descriptor('dateline_selector')
+    byline_xpath = _css_to_xpath_descriptor('byline_selector')
+    media_xpath = _css_to_xpath_descriptor('media_selector')
 
 
 class ArticleQS(models.query.QuerySet):
@@ -101,18 +118,6 @@ class Article(models.Model):
     # fb_author_id = models...
     # fb_author = models.TextField(null=True)
 
-    ### From our extraction
-    in_dev_sample = models.BooleanField(default=False)
-    download_path = models.CharField(max_length=1000, null=True)
-    # scrape_when = models.DateTimeField(help_text='When we last scraped this content')
-    #    # do we need another field to indicate our scraping method?
-    headline = models.TextField(null=True)
-    dateline = models.TextField(null=True)
-    byline = models.TextField(null=True)
-    body_html = models.TextField(null=True)  # should this be stored?
-    # media = models.ManyToMany(MediaItem)
-    # comments_data = models.OneToOne(CommentsData)
-
     # is_error_page = models.BooleanField(null=True)  # from extraction or inference
 
     ### From readability ??
@@ -120,23 +125,49 @@ class Article(models.Model):
     def get_absolute_url(self):
         return reverse('likeable.views.article', kwargs={'id': self.id})
 
-    def read_html(self):
-        # TODO: read from disk or fetch (cached or downloaded permanently)
-        pass
-
-    def get_meta_fields(self):
-        # TODO: extract <meta name/content> pairs from read_html()
-        pass
-
-    def get_css_extractions(self):
-        # TODO
-        pass
-
     class Meta:
         index_together = [
             ('url_signature', 'fb_created'),
         ]
 
+
+class DownloadedArticle(models.Model):
+    article = models.OneToOneField(Article, primary_key=True, related_name='downloaded')
+
+    ### From our extraction
+    in_dev_sample = models.BooleanField(default=False)
+    html = models.TextField()  # fetched HTML content normed to UTF-8, with some lossy compression
+    # scrape_when = models.DateTimeField(help_text='When we last scraped this content')
+    #    # do we need another field to indicate our scraping method?
+    headline = models.TextField(null=True)
+    dateline = models.TextField(null=True)
+    byline = models.TextField(null=True)
+    body_html = models.TextField(null=True)  # should this be stored?
+    # media = models.ManyToMany(MediaItem)
+    # comments_data = models.OneToOneField(CommentsData)
+
+    def get_meta_fields(self):
+        for tag in re.findall('(?i)<meta\s.*?>', self.html):
+            name = re.search(r'(?i)\bname=(["\'])(.*?)\1', tag)  # TODO: support unquoted
+            if name is None:
+                continue
+            name = name.group(1)
+            content = re.search(r'(?i)\bcontent=(["\'])(.*?)\1', tag)  # TODO: support unquoted
+            if content is None:
+                logging.warn('Found name but no content in %s', tag)
+            yield name, content
+
+    @property
+    def parsed_html(self):
+        return etree.fromstring(self.html, parser=etree.HTMLParser,
+                                base_url=self.article.url)
+
+    def evaluate_xpaths(self, xpaths):
+        parsed = self._parsed_html
+        xpatheval = etree.XPathEvaluator(parsed)
+        # XXX might be faster to accept etree.XPath instances and not use XPathEvaluator
+        # TODO: perhaps convert elements back to HTML/text where appropriate
+        return [xpatheval(xpath) for xpath in xpaths]
 
 
 class FacebookStat(object):

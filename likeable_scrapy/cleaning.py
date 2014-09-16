@@ -138,3 +138,13 @@ def url_as_diff(new, old):
 
     out = new_parse.geturl()
     return out
+
+
+def compress_html(html):
+    """
+
+    * remove <script/>, <style/>
+    * remove excess whitespace
+    * ?remove comments
+    """
+    pass
