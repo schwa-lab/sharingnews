@@ -9,12 +9,11 @@ import sys, json
 for l in sys.stdin:
     try:
         obj = json.loads(l)
+        items = obj.items()
     except Exception, e:
         print(repr(e), l, file=sys.stderr)
     else:
-        if obj is None:
-            continue
-        for k, v in obj.items():
+        for k, v in items:
             if v is None:
                 continue
             v["_id"] = k
@@ -33,18 +32,18 @@ CREATE TEMPORARY TABLE jsontmp$$ (blob JSON);
 \\echo \`date\`
 CREATE TEMPORARY TABLE articletmp$$ (id BIGINT PRIMARY KEY, blob JSON);
 INSERT INTO articletmp$$ SELECT DISTINCT ON (id) (blob->>'_id')::bigint AS id, blob FROM jsontmp$$;
-SELECT * FROM articletmp$$ LIMIT 2;
+--SELECT * FROM articletmp$$ LIMIT 2;
 DROP TABLE jsontmp$$;
 \\echo \`date\`
 UPDATE likeable_article SET
-	fb_created = (blob->>'created_time')::timestamp
+    fb_created = (blob->>'created_time')::timestamp
     -- update other fields in case FB has improved
-	-- fb_updated = (blob->>'updated_time')::timestamp,
+    -- fb_updated = (blob->>'updated_time')::timestamp,
     -- title = blob->>'title',
-	-- fb_has_title = (blob->>'title') IS NOT NULL,
+    -- fb_has_title = (blob->>'title') IS NOT NULL,
     -- description = blob->>'description',
     -- fb_type = blob->>'type'
-	FROM articletmp$$ WHERE articletmp$$.id = likeable_article.id;
+    FROM articletmp$$ WHERE articletmp$$.id = likeable_article.id;
 \\echo \`date\`
 DROP TABLE articletmp$$;
 EOF
