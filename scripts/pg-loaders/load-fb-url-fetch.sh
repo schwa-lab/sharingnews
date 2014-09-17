@@ -42,9 +42,7 @@ EXPLAIN ANALYZE INSERT INTO articletmp$$ (id, url, fb_updated, fb_type, title, d
 EXPLAIN ANALYZE INSERT INTO likeable_article (id, url, fb_updated, fb_type, fb_has_title, title, description, total_shares, url_signature_id)
 	SELECT DISTINCT ON (id) t.id, t.url, fb_updated, fb_type, title IS NOT NULL, title, description, total_shares, url_signature_id
     FROM articletmp$$ t LEFT JOIN likeable_spideredurl s ON t.url = s.url
-	WHERE t.id IS NOT NULL, t.url IS NOT NULL AND NOT EXISTS (SELECT 'X' FROM likeable_article WHERE likeable_article.id = t.id);
-
-BLAH;
+	WHERE t.id IS NOT NULL AND t.url IS NOT NULL AND NOT EXISTS (SELECT 'X' FROM likeable_article WHERE likeable_article.id = t.id);
 
 \\echo \`date\`
 EXPLAIN ANALYZE UPDATE likeable_spideredurl SET article_id = (blob->'og_object'->>'id')::bigint
