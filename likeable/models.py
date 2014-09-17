@@ -103,6 +103,9 @@ class Article(models.Model):
     description = models.TextField(null=True)
     total_shares = models.PositiveIntegerField(null=True)  # tmp
 
+    fetch_status = models.IntegerField(null=True)
+    # fetch_when = models.DateTimeField(null=True)
+
     ### From FB id lookup
     fb_created = models.DateTimeField(null=True, db_index=True)
     # fields include: site_name, image, video, admins, application, data
@@ -137,8 +140,10 @@ class DownloadedArticle(models.Model):
     ### From our extraction
     in_dev_sample = models.BooleanField(default=False)
     html = models.TextField()  # fetched HTML content normed to UTF-8, with some lossy compression
+
+    fields_dirty = models.BooleanField(default=True)
     # scrape_when = models.DateTimeField(help_text='When we last scraped this content')
-    #    # do we need another field to indicate our scraping method?
+    #    do we need another field to indicate our scraping method?
     headline = models.TextField(null=True)
     dateline = models.TextField(null=True)
     byline = models.TextField(null=True)
