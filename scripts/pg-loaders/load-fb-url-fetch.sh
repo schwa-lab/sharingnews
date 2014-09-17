@@ -30,6 +30,7 @@ psql -h schwa09 likeable likeable -e <<EOF
 \\echo \`date\`
 CREATE TEMPORARY TABLE jsontmp$$ (blob JSON);
 CREATE TEMPORARY TABLE articletmp$$ (id BIGINT, url VARCHAR(1000), fb_updated TIMESTAMP, fb_type VARCHAR(35), title TEXT, description TEXT, total_shares BIGINT);
+SELECT * FROM articletmp$$ WHERE char_length(title) >= 1000;
 \\copy jsontmp$$ FROM '$tmpdir/pipe' DELIMITER '	';
 
 \\echo \`date\`
