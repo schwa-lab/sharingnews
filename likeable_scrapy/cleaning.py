@@ -10,7 +10,7 @@ DIGIT_RE = re.compile('[0-9]')
 # PATH_PARAM_RE = re.compile('((?:;|/)[^=]+=)[^;/]*')  # for sub \1
 SLUG_CHARS = r'[\w\s\'",$+()-]'
 SLUG_RE = re.compile(r'(?u){0}*[^\W\d]+{0}*'.format(SLUG_CHARS))
-INT_ID_RE = re.compile(r'\b\d+([,_.]\d+)+\b|\b\d{8}[\d-]+\b')
+INT_ID_RE = re.compile(r'\b\d+([,_.]+\d+)+\b|\b\d{8}[\d-]+\b')
 # approximate RE for file extensions:
 EXT_RE = re.compile(r'(\.[a-zA-Z]{1,30}[0-9]{0,2}[a-zA-Z]{0,4})$')
 PATH_PARAM_RE = re.compile('=[^;/]*')  # for sub ''
@@ -36,6 +36,10 @@ def path_sig_cb(m, sub={'param': '', 'slug': 'a', 'id': 'ID'}):
 
 
 def url_signature(url):
+    """
+    >>> url_signature('http://www.people.com/people/package/0,,20395222,00.html')
+    ('people.com', '/a/a/ID.html', '')
+    """
     # TODO: doctests
     _, domain, path, query, _ = urlparse.urlsplit(url)
     path = PATH_PARAM_RE.sub('', path)
@@ -142,9 +146,24 @@ def url_as_diff(new, old):
 
 def compress_html(html):
     """
+    >>> compress_html('foo<script hello=world>foo </script>bar')
+    'foobar'
 
-    * remove <script/>, <style/>
-    * remove excess whitespace
-    * ?remove comments
+    >>> compress_html('foo \\nbar')
+    'foo\\nbar'
+    >>> compress_html('foo  \\n  \\n  bar')
+    'foo\\n\\nbar'
+    >>> compress_html('foo \\n \\n \\n bar')
+    'foo\\n\\nbar'
+
+    ### >>> compress_html('foo<!-- hello world -->bar')
+    ### 'foobar'
     """
-    pass
+    # remove <script/>, <style/>:
+    # XXX: it's possible for </...> to appear inside a script or a textarea or an attr
+    html = re.sub(r'<(script|style)\b.*?</\1>', '', html)
+    # remove comments (but these may be useful)
+    ### html = re.sub(r'<!--.*?-->', '', html)
+    # remove excess whitespace
+    html = re.sub(r'[ \t]*(\n)[ \t]*(\n?)\s*', r'\1\2', html).strip()
+    return html
