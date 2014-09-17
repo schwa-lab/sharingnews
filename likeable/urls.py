@@ -1,4 +1,3 @@
-import os
 from django.conf.urls import patterns, include, url
 from django.conf import settings
 from django.conf.urls.static import static
@@ -12,6 +11,7 @@ urlpatterns = patterns('',
     url(r'^article/url/(.+)$', 'likeable.views.article_by_url', name='article_by_url'),
     url(r'^collection/(?P<start>{m})?-(?P<end>{m})?(?:/(?P<sig>.+))?$'.format(m=MONTH_PATTERN), 'likeable.views.collection', name='collection'),
     #url(r'^collection/(?P<period>{})(?:/(?P<sig>.+))?$'.format(MONTH_PATTERN), 'likeable.views.collection', name='collection-period'),
+    url(r'^extractors/(?P<sig>.+)', 'likeable.views.extractors', name='extractors'),
 
     url(r'^admin/', include(admin.site.urls)),
 ) + static(settings.STATIC_URL, name='static')

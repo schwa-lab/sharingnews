@@ -54,6 +54,7 @@ def collection(request, sig=None, period=None, start=None, end=None):
 
     if sig is None:
         subdivisions = articles.domain_frequencies()
+        breadcrumbs = []
     elif '/' not in sig:
         # Is just base_domain
         sigs = UrlSignature.objects.for_base_domain(sig)
@@ -61,9 +62,12 @@ def collection(request, sig=None, period=None, start=None, end=None):
             raise Http404
         articles = articles.filter(url_signature__in=sigs)
         subdivisions = articles.signature_frequencies()
+        breadcrumbs = [None]
     else:
-        articles = articles.filter(url_signature=get_object_or_404(UrlSignature, signature=sig))
+        sig_obj = get_object_or_404(UrlSignature, signature=sig)
+        articles = articles.filter(url_signature=sig_obj)
         subdivisions = None
+        breadcrumbs = [None, sig_obj.base_domain]
 
     # hide insignificant subdivisions
     if subdivisions:
@@ -93,13 +97,19 @@ def collection(request, sig=None, period=None, start=None, end=None):
                                     .filter(total_shares__gte=entry['min'],
                                             total_shares__lte=entry['max'])[0])  # order_by('?') is expensive
 
-
     # TODO fetch stats and render page
     return render_to_response('collection.html',
                               {'params': {'sig': sig,
                                           'start': start,
                                           'end': end,
                                           'period': period},
+                               'breadcrumbs': breadcrumbs,
                                'share_bins': bin_data,
                                'subdivisions': subdivisions},
+                              context_instance=RequestContext(request))
+
+
+def extractors(request, sig):
+    return render_to_response('extractors.html',
+                              {'params': {'sig': sig}},
                               context_instance=RequestContext(request))

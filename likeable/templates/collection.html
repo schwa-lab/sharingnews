@@ -1,5 +1,6 @@
 {% extends "layout.html" %}
 {% block content %}
+<nav>{% for crumb in breadcrumbs %}<a href="{% if crumb %}{% url 'collection' sig=crumb %}{% else %}{% url 'collection' %}{% endif %}">{% if crumb %}{{crumb}}{% else %}All domains{% endif %}</a> &gt; {% endfor %}</nav>
 <h1>{% if params.sig %}{{params.sig}}{% else %}All domains{% endif %}
 {% if params.period %}in {{params.period}}{% endif %}
 {% if params.start and params.end %}in {{params.start}} to {{params.end}}{% elif params.start %}since {{params.start}}{% elif params.end %}until {{params.end}}{% endif %}
