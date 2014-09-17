@@ -1,4 +1,4 @@
-
+from __future__ import division, absolute_import, print_function
 import datetime
 
 from .models import SpideredUrl, Article, UrlSignature
@@ -50,8 +50,6 @@ def collection(request, sig=None, period=None, start=None, end=None):
     elif end:
         articles = articles.filter(fb_created__lt=_parse_month(end)[1])
 
-    N = articles.count()
-
     if sig is None:
         subdivisions = articles.domain_frequencies()
         breadcrumbs = []
@@ -69,13 +67,21 @@ def collection(request, sig=None, period=None, start=None, end=None):
         subdivisions = None
         breadcrumbs = [None, sig_obj.base_domain]
 
+    N = articles.count()
+
     # hide insignificant subdivisions
     if subdivisions:
-        subdiv_coverage = .99 * N
-        coverage = 0
+        # append coverage percentage
+        tmp = []
+        cumtotal = 0
+        for subdiv, count in subdivisions:
+            cumtotal += count
+            tmp.append((subdiv, count, 100 * cumtotal / N))
+        subdivisions = tmp
+
+        target_coverage = 99.9
         for i, entry in enumerate(subdivisions):
-            coverage += entry[1]  # count
-            if coverage > subdiv_coverage:
+            if entry[2] > target_coverage:
                 i += 1
                 while i < len(subdivisions) and subdivisions[i] == subdivisions[i-1][1]:
                     i += 1
@@ -105,7 +111,8 @@ def collection(request, sig=None, period=None, start=None, end=None):
                                           'period': period},
                                'breadcrumbs': breadcrumbs,
                                'share_bins': bin_data,
-                               'subdivisions': subdivisions},
+                               'subdivisions': subdivisions,
+                               'n_articles': N},
                               context_instance=RequestContext(request))
 
 
