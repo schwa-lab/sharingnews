@@ -13,7 +13,7 @@
     <dt>FB total shares</dt><dd>{{article.total_shares}} (Updated {{article.fb_updated}})</dd>
 	{% if article.fetch_status %}
 	<dt>Fetch HTTP status</dt><dd>{{article.fetch_status}}</dd>
-	<dt>In CSS development sample</dt><dd>{{article.downloaded.in_dev_sample}}</dd>
+	<dt>In extractor development sample</dt><dd>{{article.downloaded.in_dev_sample}}</dd>
 	{% endif %}
 </dl>
 
@@ -23,6 +23,10 @@
 <li><a href="{{spurl.url|iriencode}}">{{spurl.url}}</a> (SW: {% for sw in spurl.sharewarsurl_set.all %}<a href="{% url 'article_by_swid' sw.id %}">{{sw.id}}</a>@{{sw.when}}{% if not loop.last %}, {% endif %}{% endfor %})</li>
 {% endfor %}
 </ul>
+
+{% if article.fetch_status %}
+{% include "downloadedarticle.html" %}
+{% endif %}
 
 <h2>The page</h2>
 <iframe class="ext-page" src="{{article.url|iriencode}}"></iframe>

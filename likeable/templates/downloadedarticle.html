@@ -1,0 +1,15 @@
+<h2>Unsupervised extractions</h2>
+<h3>Python-Readability</h3>
+<dl>
+    {% with article.downloaded.pyreadability as items %}
+    <dt>short title</dt><dd>{{items.short_title}}</dd>
+    <dt>summary</dt><dd><iframe class="ext-page" srcdoc="{{items.summary}}"></iframe></dd>
+    {% endwith %}
+</dl>
+
+<h3>Meta tags</h3>
+<dl>
+    {% for name, content in article.downloaded.meta_fields %}
+    <dt>{{name}}</dt><dd>{{content}}</dd>
+    {% endfor %}
+</dl>

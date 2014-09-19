@@ -8,3 +8,4 @@ djorm-ext-pgfulltext
 psycopg2
 # for UnicodeDammit
 beautifulsoup4
+readability-lxml

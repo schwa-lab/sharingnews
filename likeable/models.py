@@ -5,9 +5,11 @@ import logging
 
 from lxml import etree
 from scrapy.selector import csstranslator
-
+from readability import readability
 from django.db import models
 from django.core.urlresolvers import reverse
+
+from likeable_scrapy.cleaning import xml_unescape
 
 logger = logging.getLogger(__name__)
 
@@ -151,16 +153,29 @@ class DownloadedArticle(models.Model):
     # media = models.ManyToMany(MediaItem)
     # comments_data = models.OneToOneField(CommentsData)
 
-    def get_meta_fields(self):
+    def _get_meta_fields(self):
         for tag in re.findall('(?i)<meta\s.*?>', self.html):
             name = re.search(r'(?i)\bname=(["\'])(.*?)\1', tag)  # TODO: support unquoted
             if name is None:
                 continue
-            name = name.group(1)
+            name = name.group(2)
             content = re.search(r'(?i)\bcontent=(["\'])(.*?)\1', tag)  # TODO: support unquoted
             if content is None:
                 logging.warn('Found name but no content in %s', tag)
-            yield name, content
+            # todo: unescape
+            yield name, xml_unescape(content.group(2))
+
+    @property
+    def meta_fields(self):
+        return sorted(self._get_meta_fields())
+
+    @property
+    def pyreadability(self):
+        logger.warning('!')
+        print('!!!')
+        doc = readability.Document(self.html)
+        return {'short_title': doc.short_title(),
+                'summary': doc.summary()}
 
     @property
     def parsed_html(self):
