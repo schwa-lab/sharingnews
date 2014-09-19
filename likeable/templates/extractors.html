@@ -2,4 +2,15 @@
 {% block content %}
 <h1>Developing CSS selectors for <a href="{% url 'collection' sig=params.sig %} ">{{ params.sig }}</a></h1>
 
+<!-- for now we'll pretend we're only dealing with one field -->
+<div class=".selentry">
+<label>CSS selector: <input name="selector" value=""></label>
+or <input type="button" name="selcopy" value="copy from:">
+<select name="altsources">{% for altsource in field.altsources %}<option value="{{altsource.selector}}">{{altsource.selector}} | {{altsource.desc}}</option>{% endfor %}</select>
+
+<br />
+<input type="button" name="seltest" value="Evaluate">
+<input type="button" name="selsave" value="Save">
+</div>
+
 {% endblock %}
