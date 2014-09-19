@@ -77,7 +77,7 @@ def process_path(stat_path):
         except ObjectDoesNotExist:
             pass
         else:
-            print('Skipped duplicate', stat_path, file=sys.stderr)
+            print('Skipped duplicate', stat_path, 'fbid=', article.id, file=sys.stderr)
             return
     if article.fetch_status is not None:
         print('Found fetch_status', article.fetch_status, 'so overwriting with 200 from', stat_path, 'for', canonical, file=sys.stderr)
@@ -93,7 +93,7 @@ def process_path(stat_path):
                                            html=compress_html(content))
     article.downloaded.save()
     article.save()
-    print('SUCCESS:', stat_path, '=', canonical, file=sys.stderr)
+    print('SUCCESS:', stat_path, '=', canonical, 'fbid=', article.id, file=sys.stderr)
 
 
 for stat_path in sys.argv[1:]:
