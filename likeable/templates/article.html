@@ -11,6 +11,10 @@
     <dt>Domain</dt><dd><a href="{% url 'collection' sig=article.url_signature.base_domain %}">{{article.url_signature.base_domain}}</a> / </dd>
     <dt>Facebook Graph</dt><dd><a href="http://graph.facebook.com/{{article.id}}">{{article.id}}</a></dd>
     <dt>FB total shares</dt><dd>{{article.total_shares}} (Updated {{article.fb_updated}})</dd>
+	{% if article.fetch_status %}
+	<dt>Fetch HTTP status</dt><dd>{{article.fetch_status}}</dd>
+	<dt>In CSS development sample</dt><dd>{{article.downloaded.in_dev_sample}}</dd>
+	{% endif %}
 </dl>
 
 <h2>Incoming URLs</h2>
