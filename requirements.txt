@@ -6,3 +6,5 @@ django-debug-toolbar
 django-extensions
 djorm-ext-pgfulltext
 psycopg2
+# for UnicodeDammit
+beautifulsoup4
