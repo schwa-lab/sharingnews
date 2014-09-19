@@ -21,7 +21,7 @@ def _article_by_spidered_url(**kwargs):
 
 
 def article_by_swid(request, swid):
-    return _article_by_spidered_url(swid=swid)
+    return _article_by_spidered_url(sharewarsurl__id=swid)
 
 
 def article_by_url(request, url):
