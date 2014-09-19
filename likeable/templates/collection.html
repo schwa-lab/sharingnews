@@ -6,14 +6,19 @@
 {% if params.start and params.end %}in {{params.start}} to {{params.end}}{% elif params.start %}since {{params.start}}{% elif params.end %}until {{params.end}}{% endif %}
 </h1>
 
-{{n_articles}} articles
+<dl>
+    <dt>Total</dt><dd>{{articles.count}}</dd>
+    <dt>Fetched</dt><dd>{{fetched.count}}</dd>
+    <dt>Successful fetch</dt><dd>{{fetched_success.count}}</dd>
+    <dt>{% if not subdivisions %}<a href="{% url 'extractors' sig=params.sig %}">{% endif %}Extractor development{% if not subdivisions %}</a>{% endif %}</dt><dd>{{dev_sample.count}}</dd>
+</dl>
 
 <h2>Total shares summary</h2>
 <table>
     <thead><tr><th>Bin freq</th><th>Min</th><th>Max</th><th>Avg</th><th>Example</th></tr></thead>
     <tbody>
     {% for bin in share_bins %}
-    <tr><td>{{bin.count}}</td><td>{{bin.min}}</td><td>{{bin.max}}</td><td>{{bin.avg|floatformat:1}}</td><td><a href="{{ bin.example.get_absolute_url|iriencode }}">{{bin.example.title|default:'title missing'}}</a> (<a href="{{bin.example.url|iriencode}}">{{bin.example.url_signature.base_domain}}</a>)</td></tr>
+    <tr><td>{{bin.count}}</td><td>{{bin.min}}</td><td>{{bin.max}}</td><td>{{bin.avg|floatformat:1}}</td><td>{% include '_article_link.html' with article=bin.example only %}</td></tr>
     {% endfor %}
     </tbody>
 </table>

@@ -103,6 +103,10 @@ def collection(request, sig=None, period=None, start=None, end=None):
                                     .filter(total_shares__gte=entry['min'],
                                             total_shares__lte=entry['max'])[0])  # order_by('?') is expensive
 
+    fetched = articles.filter(fetch_status__isnull=False)
+    fetched_success = fetched.filter(fetch_status__gte=200, fetch_status__lt=300)
+    dev_sample = fetched_success.filter(downloaded__in_dev_sample=True)
+
     # TODO fetch stats and render page
     return render_to_response('collection.html',
                               {'params': {'sig': sig,
@@ -112,11 +116,18 @@ def collection(request, sig=None, period=None, start=None, end=None):
                                'breadcrumbs': breadcrumbs,
                                'share_bins': bin_data,
                                'subdivisions': subdivisions,
-                               'n_articles': N},
+                               'articles': articles,
+                               'fetched': fetched,
+                               'fetched_success': fetched_success,
+                               'dev_sample': dev_sample},
                               context_instance=RequestContext(request))
 
 
 def extractors(request, sig):
+    signature = get_object_or_404(UrlSignature, signature=sig)
+    articles = signature.article_set
+    dev_sample = articles.filter(downloaded__in_dev_sample=True)
     return render_to_response('extractors.html',
-                              {'params': {'sig': sig}},
+                              {'params': {'sig': sig},
+                               'dev_sample': dev_sample,},
                               context_instance=RequestContext(request))

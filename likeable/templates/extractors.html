@@ -13,4 +13,11 @@ or <input type="button" name="selcopy" value="copy from:">
 <input type="button" name="selsave" value="Save">
 </div>
 
+<h2>Development sample</h2>
+<ul>
+{% for article in dev_sample %}
+    <li>{% include '_article_link.html' with article=article only %}</li>
+{% endfor %}
+</ul>
+
 {% endblock %}
