@@ -95,7 +95,7 @@ class Article(models.Model):
     id = models.BigIntegerField(null=False, primary_key=True,
                                 help_text="Facebook's numeric ID")
     url_signature = models.ForeignKey(UrlSignature, null=True, db_index=True)  # null only when loading
-    url = models.URLField(max_length=1000)  # canonical URL according to Facebook
+    url = models.URLField(max_length=1000, db_index=True)  # canonical URL according to Facebook
     fb_updated = models.DateTimeField(null=True)
     fb_type = models.CharField(max_length=35, null=True)
     fb_has_title = models.BooleanField(default=False, db_index=True)  # for easy indexing

@@ -3,6 +3,7 @@ tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT INT TERM HUP
 mkfifo "$tmpdir/pipe"
 
+sed 's/"title":"http[^"]*",//g' |
 python -c '
 from __future__ import print_function
 import sys, json
@@ -19,7 +20,6 @@ for l in sys.stdin:
             v["_id"] = k
             print(json.dumps(v))
 ' |
-sed 's/"title":"http[^"]*",//g' |
 sed 's/\\/\\\\/g' > $tmpdir/pipe &
 
 ls -l $tmpdir/pipe
