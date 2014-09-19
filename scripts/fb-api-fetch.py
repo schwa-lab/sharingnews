@@ -107,7 +107,7 @@ class Fetcher(object):
                 raise
             return self.fetch_batch(urls, _depth=_depth + 1)
         resp = resp.json()
-        assert len(urls) == len(resp)
+        assert len(urls) == len(resp), resp
         errors = []
         out = ['{']
         for url, entry in zip(urls, resp):
