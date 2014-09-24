@@ -46,10 +46,23 @@ jQuery.fn.setMatched = function(val) {
   this.find('.matched').addBack('.matched').attr('data-value', val).text('Matched: ' + val);
   return this;
 }
+
+$.fn.enterKey = function (fnc) {
+    return this.each(function () {
+        $(this).keypress(function (ev) {
+            var keycode = (ev.keyCode ? ev.keyCode : ev.which);
+            if (keycode == '13') {
+                fnc.call(this, ev);
+            }
+        })
+    })
+}
 $(window).load(function() {
   $('#devsample > li').append(' <span class="matched"></span>').setMatched('?');
-
-  $('#seltest').click(function () {
+  $('#selector').enterKey(function(){ $('#seltest').click(); });
+  $('#selector').select();
+  $('#seltest').click(function(){
+    $('#seltest').prop('disabled', true);
     var selector = $("#selector").val()
     $('#devsample > li').setMatched('?');
     $.get('{% url 'extractor_eval' params.sig %}',
@@ -58,8 +71,11 @@ $(window).load(function() {
             $.each(result[selector], function (article_id, extractions) {
               $('#devsample .devsample' + article_id).setMatched(extractions.length);
             });
+            $('#seltest').prop('disabled', true);
           },
-          'json');
+          'json').always(function (){
+            $('#seltest').prop('disabled', false);
+          });
   });
 });
 </script>
