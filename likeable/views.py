@@ -1,10 +1,15 @@
 from __future__ import division, absolute_import, print_function
 import datetime
+from collections import defaultdict
 
-from .models import SpideredUrl, Article, UrlSignature
+from lxml import etree
+
+from jsonview.decorators import json_view
 from django.shortcuts import render_to_response, redirect, get_object_or_404
 from django.http import Http404
 from django.template import RequestContext
+from .models import SpideredUrl, Article, UrlSignature, css_to_xpath
+
 
 def article(request, id):
     article = get_object_or_404(Article, id=id)
@@ -131,3 +136,21 @@ def extractors(request, sig):
                               {'params': {'sig': sig},
                                'dev_sample': dev_sample,},
                               context_instance=RequestContext(request))
+
+
+@json_view
+def extractor_eval(request, sig):
+    # allow multiple sels
+    selectors = request.GET.getlist('selector')
+    # error if none or too many
+    signature = get_object_or_404(UrlSignature, signature=sig)
+    dev_sample = signature.article_set.filter(downloaded__in_dev_sample=True).select_related('downloaded')
+    xpaths = [(selector, etree.XPath(css_to_xpath(selector))) for selector in selectors]
+    results = defaultdict(dict)
+    for article in dev_sample:
+        parsed = article.downloaded.parsed_html
+        for selector, xpath in xpaths:
+            # XXX: need correct test for element
+            results[selector][article.id] = [etree.tounicode(el) if hasattr(el, 'tag') else unicode(el)
+                                             for el in xpath(parsed)]
+    return results

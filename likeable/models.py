@@ -19,19 +19,21 @@ class UrlSignatureManager(models.Manager):
         return self.filter(base_domain=domain)
 
 
+css_to_xpath = csstranslator.ScrapyHTMLTranslator().css_to_xpath
+
+
 class _css_to_xpath_descriptor(object):
     def __init__(self, field):
         self.field = field
 
-    def __get__(self, obj, objtype=None,
-                translator=csstranslator.ScrapyHTMLTranslator()):
+    def __get__(self, obj, objtype=None):
         if obj is None:
             return self
         css_sel = getattr(obj, self.field)
         if css_sel is None:
             return None
         # TODO: lrucache on objtype
-        return str(translator.css_to_xpath(css_sel))
+        return css_to_xpath(css_sel)
 
 
 class UrlSignature(models.Model):
@@ -179,7 +181,7 @@ class DownloadedArticle(models.Model):
 
     @property
     def parsed_html(self):
-        return etree.fromstring(self.html, parser=etree.HTMLParser,
+        return etree.fromstring(self.html, parser=etree.HTMLParser(),
                                 base_url=self.article.url)
 
     def evaluate_xpaths(self, xpaths):

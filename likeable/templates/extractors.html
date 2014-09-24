@@ -4,20 +4,63 @@
 
 <!-- for now we'll pretend we're only dealing with one field -->
 <div class=".selentry">
-<label>CSS selector: <input name="selector" value=""></label>
+<label>CSS selector: <input id="selector" value=""></label>
 or <input type="button" name="selcopy" value="copy from:">
 <select name="altsources">{% for altsource in field.altsources %}<option value="{{altsource.selector}}">{{altsource.selector}} | {{altsource.desc}}</option>{% endfor %}</select>
 
 <br />
-<input type="button" name="seltest" value="Evaluate">
-<input type="button" name="selsave" value="Save">
+<input type="button" id="seltest" value="Evaluate">
+<input type="button" id="selsave" value="Save">
 </div>
 
 <h2>Development sample</h2>
-<ul>
+<table>
+<ul id="devsample">
 {% for article in dev_sample %}
-    <li>{% include '_article_link.html' with article=article only %}</li>
+  <li class="devsample{{article.id}}" data-id="{{article.id}}">{% include '_article_link.html' with article=article only %}</li>
 {% endfor %}
 </ul>
 
+{% endblock %}
+
+{% block css %}
+<style type="text/css">
+.matched {
+  color: orange;
+}
+.matched[data-value="?"] {
+  color: gray;
+}
+.matched[data-value="0"] {
+  color: red;
+}
+.matched[data-value="1"] {
+  color: green;
+}
+</style>
+{% endblock %}
+
+{% block js %}
+<script type="text/javascript">
+jQuery.fn.setMatched = function(val) {
+  this.find('.matched').addBack('.matched').attr('data-value', val).text('Matched: ' + val);
+  return this;
+}
+$(window).load(function() {
+  $('#devsample > li').append(' <span class="matched"></span>').setMatched('?');
+
+  $('#seltest').click(function () {
+    var selector = $("#selector").val()
+    $('#devsample > li').setMatched('?');
+    $.get('{% url 'extractor_eval' params.sig %}',
+          {selector: selector},
+          function (result) {
+            $.each(result[selector], function (article_id, extractions) {
+              $('#devsample .devsample' + article_id).setMatched(extractions.length);
+            });
+          },
+          'json');
+  });
+});
+</script>
 {% endblock %}
