@@ -17,7 +17,7 @@ or <input type="button" name="selcopy" value="copy from:">
 <table>
 <ul id="devsample">
 {% for article in dev_sample %}
-  <li class="devsample{{article.id}}" data-id="{{article.id}}">{% include '_article_link.html' with article=article only %}</li>
+  <li class="deventry devsample{{article.id}}" data-id="{{article.id}}">{% include '_article_link.html' with article=article only %}</li>
 {% endfor %}
 </ul>
 
@@ -27,15 +27,22 @@ or <input type="button" name="selcopy" value="copy from:">
 <style type="text/css">
 .matched {
   color: orange;
+  cursor: pointer;
 }
 .matched[data-value="?"] {
   color: gray;
+  cursor: auto;
 }
 .matched[data-value="0"] {
   color: red;
+  cursor: auto;
 }
 .matched[data-value="1"] {
   color: green;
+}
+.matched-content {
+  display: none;
+  margin: .5em 2em;
 }
 </style>
 {% endblock %}
@@ -43,7 +50,7 @@ or <input type="button" name="selcopy" value="copy from:">
 {% block js %}
 <script type="text/javascript">
 jQuery.fn.setMatched = function(val) {
-  this.find('.matched').addBack('.matched').attr('data-value', val).text('Matched: ' + val);
+  var el = this.find('.matched').addBack('.matched').attr('data-value', val).text('Matched: ' + val);
   return this;
 }
 
@@ -58,24 +65,38 @@ $.fn.enterKey = function (fnc) {
     })
 }
 $(window).load(function() {
-  $('#devsample > li').append(' <span class="matched"></span>').setMatched('?');
+  $('#devsample > li').append(' <span class="matched"></span><ol class="matched-content"></ol>').setMatched('?');
   $('#selector').enterKey(function(){ $('#seltest').click(); });
   $('#selector').select();
+
   $('#seltest').click(function(){
     $('#seltest').prop('disabled', true);
     var selector = $("#selector").val()
     $('#devsample > li').setMatched('?');
+    $('#devsample > li .matched-content').empty();
     $.get('{% url 'extractor_eval' params.sig %}',
           {selector: selector},
           function (result) {
             $.each(result[selector], function (article_id, extractions) {
-              $('#devsample .devsample' + article_id).setMatched(extractions.length);
+              var entry = $('#devsample .devsample' + article_id);
+              entry.setMatched(extractions.length);
+              var content = entry.find('.matched-content');
+              for (var i in extractions) {
+                content.append($('<li/>').text(extractions[i]));
+              }
             });
             $('#seltest').prop('disabled', true);
           },
           'json').always(function (){
             $('#seltest').prop('disabled', false);
           });
+  });
+
+  $('#devsample > li .matched').click(function() {
+    if ($(this).data('value') == 0 || $(this).data('value') == '?')
+      return;
+    $(this).closest('.deventry').find('.matched-content').toggle();
+    return;
   });
 });
 </script>
