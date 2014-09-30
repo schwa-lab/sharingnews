@@ -10,7 +10,7 @@ import django
 from django.core.exceptions import ObjectDoesNotExist
 
 from likeable.models import Article, DownloadedArticle, ShareWarsUrl
-from likeable_scrapy.cleaning import extract_canonical, compress_html
+from likeable.cleaning import extract_canonical, compress_html
 
 django.setup()
 

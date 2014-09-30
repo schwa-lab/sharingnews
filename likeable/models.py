@@ -9,7 +9,7 @@ from readability import readability
 from django.db import models
 from django.core.urlresolvers import reverse
 
-from likeable_scrapy.cleaning import xml_unescape
+from .cleaning import xml_unescape
 
 logger = logging.getLogger(__name__)
 

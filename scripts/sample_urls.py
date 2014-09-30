@@ -10,7 +10,7 @@ import sys
 from collections import defaultdict
 import random
 import datetime
-from likeable_scrapy.cleaning import url_signature, strip_subdomains
+from likeable.cleaning import url_signature, strip_subdomains
 
 MIN_CLUSTER_SIZE = 30
 now = datetime.datetime.now

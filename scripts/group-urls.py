@@ -9,7 +9,7 @@ import sys
 from collections import defaultdict, Counter
 import random
 
-from likeable_scrapy.cleaning import url_signature
+from likeable.cleaning import url_signature
 
 MAX_DISPLAY = 10
 counter = Counter()
