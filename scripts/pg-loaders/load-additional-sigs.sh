@@ -16,7 +16,7 @@ UPDATE sigtmp SET sigid = lus.id
     FROM likeable_urlsignature lus WHERE lus.signature = sig;
 \\echo \`date\`
 INSERT INTO likeable_urlsignature (signature, base_domain)
-    SELECT DISTINCT ON (sig) sig, domain FROM sigtmp WHERE sigid IS NULL;
+	SELECT DISTINCT ON (sig) sig, domain FROM sigtmp WHERE sigid IS NULL AND CHAR_LENGTH(sig) <= 300;
 \\echo \`date\`
 UPDATE sigtmp SET sigid = lus.id
     FROM likeable_urlsignature lus WHERE lus.signature = sig AND sigid is NULL;
@@ -24,4 +24,5 @@ UPDATE sigtmp SET sigid = lus.id
 UPDATE likeable_article SET url_signature_id = sigid
     FROM sigtmp WHERE likeable_article.url = sigtmp.url;
 \\echo \`date\`
+SELECT * FROM sigtmp WHERE CHAR_LENGTH(sig) > 300;
 EOF
