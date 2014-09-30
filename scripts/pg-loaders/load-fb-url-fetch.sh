@@ -29,12 +29,13 @@ psql -h schwa09 likeable likeable -e <<EOF
 \\echo \`date\`
 CREATE TEMPORARY TABLE jsontmp$$ (blob JSON);
 CREATE TEMPORARY TABLE articletmp$$ (in_url TEXT, id BIGINT, url VARCHAR(1000), fb_updated TIMESTAMP, fb_type VARCHAR(35), title TEXT, description TEXT, total_shares BIGINT);
-SELECT * FROM articletmp$$ WHERE char_length(title) >= 1000;
 \\copy jsontmp$$ FROM '$tmpdir/pipe' DELIMITER '	';
 
 \\echo \`date\`
 EXPLAIN ANALYZE INSERT INTO articletmp$$ (in_url, id, url, fb_updated, fb_type, title, description, total_shares)
-    SELECT blob->>'_id', (blob->'og_object'->>'id')::bigint, blob->'og_object'->>'url', (blob->'og_object'->>'updated_time')::timestamp, blob->'og_object'->>'type', blob->'og_object'->>'title', blob->'og_object'->>'description', (blob->'share'->>'share_count')::bigint FROM jsontmp$$;
+SELECT blob->>'_id', (blob->'og_object'->>'id')::bigint, blob->'og_object'->>'url', (blob->'og_object'->>'updated_time')::timestamp, blob->'og_object'->>'type', btrim(blob->'og_object'->>'title'), blob->'og_object'->>'description', (blob->'share'->>'share_count')::bigint FROM jsontmp$$;
+
+SELECT * FROM articletmp$$ WHERE char_length(title) > 1000;
 
 \\echo \`date\`
 EXPLAIN ANALYZE INSERT INTO likeable_article (id, url, fb_updated, fb_type, fb_has_title, title, description, total_shares, url_signature_id)
@@ -43,9 +44,8 @@ EXPLAIN ANALYZE INSERT INTO likeable_article (id, url, fb_updated, fb_type, fb_h
 	WHERE t.id IS NOT NULL
 	AND t.url IS NOT NULL
 	AND NOT EXISTS (SELECT 1 FROM likeable_article WHERE likeable_article.id = t.id)
-	AND char_length(t.url) < 1000;
-
-SELECT id, url FROM likeable_article WHERE url LIKE '%canberra-20140516-zrefk.html';
+	AND char_length(t.url) < 1000
+	AND char_length(t.title) < 1000;
 
 \\echo \`date\`
 EXPLAIN ANALYZE UPDATE likeable_spideredurl SET article_id = a.id
