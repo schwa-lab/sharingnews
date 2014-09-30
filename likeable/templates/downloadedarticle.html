@@ -3,7 +3,7 @@
 <dl>
     {% with article.downloaded.pyreadability as items %}
     <dt>short title</dt><dd>{{items.short_title}}</dd>
-    <dt>summary</dt><dd><iframe class="ext-page" srcdoc="{{items.summary}}"></iframe></dd>
+	<dt>summary</dt><dd><div class="resizable ext-page"><iframe srcdoc="{{items.summary}}"></iframe></div></dd>
     {% endwith %}
 </dl>
 
