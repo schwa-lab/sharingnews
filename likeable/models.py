@@ -14,7 +14,17 @@ from .cleaning import xml_unescape
 logger = logging.getLogger(__name__)
 
 
+class UrlSignatureQS(models.query.QuerySet):
+    def count_field(self, field):
+        return self.filter(**{field + '__isnull': False})\
+                   .values_list(field)\
+                   .annotate(n=models.Count('pk'))
+
+
 class UrlSignatureManager(models.Manager):
+    def get_queryset(self):
+        return UrlSignatureQS(self.model)
+
     def for_base_domain(self, domain):
         return self.filter(base_domain=domain)
 

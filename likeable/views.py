@@ -154,3 +154,19 @@ def extractor_eval(request, sig):
             results[selector][article.id] = [etree.tounicode(el) if hasattr(el, 'tag') else unicode(el)
                                              for el in xpath(parsed)]
     return results
+
+
+@json_view
+def prior_extractors(request, field, sig):
+    """Get frequency of selectors previously saved"""
+    signature = get_object_or_404(UrlSignature, signature=sig)
+    results = [{'selector': k, 'overall': v}
+               for k, v
+               in UrlSignature.objects.all().count_field(field + '_selector')]
+
+    domain_mapping = dict(UrlSignature.objects.filter(base_domain=signature.base_domain).count_field(field + '_selector'))
+    for k, v in results:
+        results['domain'] = domain_mapping.get(k, 0)
+
+    # TODO: match path but possibly different domain
+    return results

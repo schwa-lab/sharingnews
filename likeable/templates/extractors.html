@@ -5,8 +5,7 @@
 <!-- for now we'll pretend we're only dealing with one field -->
 <div class=".selentry">
 <label>CSS selector: <input id="selector" value=""></label>
-or <input type="button" name="selcopy" value="copy from:">
-<select name="altsources">{% for altsource in field.altsources %}<option value="{{altsource.selector}}">{{altsource.selector}} | {{altsource.desc}}</option>{% endfor %}</select>
+or <a href="#" id="copy-selector-link">copy ...</a>
 
 <br />
 <input type="button" id="seltest" value="Evaluate">
