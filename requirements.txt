@@ -11,3 +11,4 @@ beautifulsoup4
 readability-lxml
 django-jsonview
 pika
+pytz

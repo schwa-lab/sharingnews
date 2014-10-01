@@ -10,6 +10,7 @@ import datetime
 import traceback
 import logging
 import json
+import pytz
 
 import pika
 import django
@@ -21,7 +22,7 @@ from likeable.scraping import (fetch_with_refresh, HTTP_ENCODINGS,
 from likeable.cleaning import compress_html, extract_canonical
 
 django.setup()
-now = datetime.datetime.now
+now = lambda: datetime.datetime.utcnow().replace(tzinfo=pytz.utc)
 logger = logging.getLogger(__file__)
 
 
@@ -29,7 +30,7 @@ domain_encodings = defaultdict(lambda: list(HTTP_ENCODINGS))
 
 
 def json_log(**data):
-    data['timestamp'] = now.isoformat()
+    data['timestamp'] = now().isoformat()
     logger.info(json.dumps(data))
 
 
@@ -39,7 +40,7 @@ def enqueue(channel, queue, f):
         i += 1
         channel.basic_publish(exchange='',
                               routing_key=queue,
-                              body=int(l),
+                              body=str(int(l)),
                               properties=pika.BasicProperties(
                                   delivery_mode=2,  # make message persistent
                               ))
@@ -80,7 +81,7 @@ def _save_article(article, response, timestamp):
     downloaded.save()
 
 
-def _save_log(article, prior_status, hops, exc, timestamp):
+def _save_log(article, prior_status, hops, exc):
     status = 'exception' if exc is not None else hops[-1].status_code
     reqs = [{'status': hop.status_code,
              'url': hop.url,
@@ -131,7 +132,7 @@ def download_and_save(article_id):
         _save_article(article, hops[-1], timestamp)
     # TODO: perhaps save pseudo-status on exception
 
-    _save_log(article, prior_status, hops, exc, timestamp)
+    _save_log(article, prior_status, hops, exc)
 
 
 def worker_callback(channel, method, properties, body):
@@ -151,11 +152,11 @@ def main():
     import os
     import socket
     default_log_prefix = os.path.expanduser('~likeable/logs/fetch/'
-                                            'fetch-{}-{}.log'
+                                            'fetch-{}-{}.log.bz2'
                                             ''.format(socket.gethostname(),
                                                       os.getpid()))
     ap = argparse.ArgumentParser()
-    ap.add_argument('-H' '--host', default='localhost')
+    ap.add_argument('-H', '--host', default='localhost')
     ap.add_argument('--port', default=None)
     ap.add_argument('--queue', default='likeable-id-download')
     ap.add_argument('--log-path', default=default_log_prefix)
@@ -170,10 +171,11 @@ def main():
     args = ap.parse_args()
 
     logger.setLevel(logging.DEBUG)
-    logging.handlers.TimedRotatingFileHandler(args.log_path,
-                                              when='h', interval=6,
-                                              encoding='bz2')
-    logger.addHandler()
+    handler = logging.handlers.TimedRotatingFileHandler(args.log_path,
+                                                        when='D',
+                                                        encoding='bz2')
+    print('Logging to', args.log_path + '*', file=sys.stderr)
+    logger.addHandler(handler)
 
     conn_params = pika.ConnectionParameters(host=args.host, port=args.port)
     connection = pika.BlockingConnection(conn_params)
@@ -184,3 +186,6 @@ def main():
     else:
         enqueue(channel, args.queue, args.infile)
     connection.close()
+
+if __name__ == '__main__':
+    main()
