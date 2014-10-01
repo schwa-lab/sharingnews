@@ -6,7 +6,7 @@ import sys
 import re
 import datetime
 
-from likeable_scrapy.cleaning import (extract_canonical, url_as_diff,
+from likeable.cleaning import (extract_canonical, url_as_diff,
                                       url_signature, strip_subdomains)
 
 ###DATA_ROOT = os.path.expanduser('~likeable/data')

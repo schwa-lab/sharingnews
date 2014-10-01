@@ -9,7 +9,7 @@ from readability import readability
 from django.db import models
 from django.core.urlresolvers import reverse
 
-from likeable_scrapy.cleaning import xml_unescape
+from .cleaning import xml_unescape
 
 logger = logging.getLogger(__name__)
 
@@ -144,9 +144,10 @@ class DownloadedArticle(models.Model):
     ### From our extraction
     in_dev_sample = models.BooleanField(default=False)
     html = models.TextField()  # fetched HTML content normed to UTF-8, with some lossy compression
+    fetch_when = models.DateTimeField(null=True)
+    canonical_url = models.TextField(null=True)
 
     fields_dirty = models.BooleanField(default=True)
-    # scrape_when = models.DateTimeField(help_text='When we last scraped this content')
     #    do we need another field to indicate our scraping method?
     headline = models.TextField(null=True)
     dateline = models.TextField(null=True)

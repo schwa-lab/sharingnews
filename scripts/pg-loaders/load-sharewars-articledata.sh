@@ -9,7 +9,7 @@ grep '|http' |
 cut -d'#' -f1 |
 python -c '
 import sys
-from likeable_scrapy.cleaning import url_signature, strip_subdomains
+from likeable.cleaning import url_signature, strip_subdomains
 for l in sys.stdin:
     sig = url_signature(l.split("|")[-1].rstrip())
     sig += (strip_subdomains(sig[0]),)

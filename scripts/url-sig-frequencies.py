@@ -1,7 +1,7 @@
 from __future__ import print_function
 import sys
 from collections import Counter
-from likeable_scrapy.cleaning import url_signature
+from likeable.cleaning import url_signature
 
 counter = Counter()
 for l in sys.stdin:

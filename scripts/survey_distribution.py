@@ -2,7 +2,7 @@ from __future__ import print_function, division
 from collections import Counter, defaultdict
 import operator
 
-from likeable_scrapy.cleaning import strip_subdomains
+from likeable.cleaning import strip_subdomains
 
 MONTH_FIELD = 1
 
