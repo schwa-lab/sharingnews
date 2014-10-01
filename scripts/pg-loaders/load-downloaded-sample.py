@@ -40,7 +40,7 @@ def process_path(stat_path):
     else:
         ud = UnicodeDammit(content, is_html=True)
         if ud.unicode_markup is None:
-            raise UnicodeDecodeError('UnicodeDamiit failed for ' + stat_path)
+            raise UnicodeDecodeError('UnicodeDamit failed for ' + stat_path)
         content = ud.unicode_markup
         content = re.sub(u'<!--.*?-->', '', content, re.DOTALL).strip()
         canonical = extract_canonical(content, end_url) or end_url
