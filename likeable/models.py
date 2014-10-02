@@ -67,6 +67,13 @@ class UrlSignature(models.Model):
     byline_xpath = _css_to_xpath_descriptor('byline_selector')
     media_xpath = _css_to_xpath_descriptor('media_selector')
 
+    def get_absolute_url(self):
+        return reverse('likeable.views.collection',
+                       kwargs={'sig': self.signature,
+                               'start': '',
+                               'end': ''})
+
+
 
 class ArticleQS(models.query.QuerySet):
     def calc_share_quantiles(self, percentiles=[50, 75, 90, 95, 99]):  #  min_fb_created=None, max_fb_created=None):
@@ -184,8 +191,6 @@ class DownloadedArticle(models.Model):
 
     @property
     def pyreadability(self):
-        logger.warning('!')
-        print('!!!')
         doc = readability.Document(self.html)
         return {'short_title': doc.short_title(),
                 'summary': doc.summary()}

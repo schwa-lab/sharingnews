@@ -160,13 +160,22 @@ def extractor_eval(request, sig):
 def prior_extractors(request, field, sig):
     """Get frequency of selectors previously saved"""
     signature = get_object_or_404(UrlSignature, signature=sig)
-    results = [{'selector': k, 'overall': v}
+    signatures = UrlSignature.objects
+    field += '_selector'
+    results = [{'selector': k,
+                'overall': v,
+                'overall_example': signatures.filter(**{field: k})[0],
+                }
                for k, v
-               in UrlSignature.objects.all().count_field(field + '_selector')]
+               in signatures.all().count_field(field)]
 
-    domain_mapping = dict(UrlSignature.objects.filter(base_domain=signature.base_domain).count_field(field + '_selector'))
+    domain_mapping = dict(signatures.filter(base_domain=signature.base_domain).count_field(field))
     for k, v in results:
-        results['domain'] = domain_mapping.get(k, 0)
+        if k not in domain_mapping:
+            continue
+        results['domain'] = domain_mapping[k]
+        results['domain_example'] = signatures.filter(**{'base_domain': signature.base_domain,
+                                                         field: k})[0]
 
     # TODO: match path but possibly different domain
     return results
