@@ -8,12 +8,11 @@ import time
 import datetime
 import json
 from itertools import islice
+from likeable.settings import FB_API_TOKEN
 
 import requests
 
 now = datetime.datetime.now
-
-ACCESS_TOKEN = '1542059102694981|snItY58M0f9cwDP0OFECJRsEkKE'  # from facebook.get_app_access_token == grant_type=client_credentials
 
 
 RETRY_ERRORS = [-2, -1, 2, 4, 17, 341]  # 1 ; -1 is our own
@@ -55,7 +54,7 @@ class Fetcher(object):
     def fetch_comma(self, urls, _depth=1):
         self._pre()
         try:
-            resp = requests.get('https://graph.facebook.com/v2.1?access_token={}&ids={}'.format(ACCESS_TOKEN, ','.join(urllib.quote(url) for url in urls)),
+            resp = requests.get('https://graph.facebook.com/v2.1?access_token={}&ids={}'.format(FB_API_TOKEN, ','.join(urllib.quote(url) for url in urls)),
                                 params=self.params, timeout=30)
         except (requests.Timeout, requests.ConnectionError) as e:
             code = -1
@@ -97,7 +96,7 @@ class Fetcher(object):
                                        for url in urls))
         try:
             resp = requests.post('https://graph.facebook.com/v2.1',
-                                 data={'access_token': ACCESS_TOKEN,
+                                 data={'access_token': FB_API_TOKEN,
                                        'include_headers': 'false',
                                        'batch': batch},
                                  timeout=50)

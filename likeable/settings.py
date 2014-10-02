@@ -20,7 +20,9 @@ from . import secret
 # See https://docs.djangoproject.com/en/1.7/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'rt9wd6#!%u3p4se*4o4mujn12462i50_g8wge!ssatvj)@5l85'
+SECRET_KEY = secret.DJANGO_SECRET_KEY
+
+FB_API_TOKEN = secret.FB_API_TOKEN
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
