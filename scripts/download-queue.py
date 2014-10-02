@@ -14,6 +14,7 @@ import pytz
 
 import pika
 import django
+from django.db import reset_queries, transaction
 from bs4 import UnicodeDammit
 
 from likeable.models import Article, DownloadedArticle
@@ -49,9 +50,6 @@ def enqueue(channel, queue, f):
 
 def _save_article(article, response, timestamp):
     status = response.status_code
-    if article.fetch_status != status:
-        print('Replacing status {0.fetch_status} with {1} '
-              'for {0.id}'.format(article, status))
     article.fetch_status = status
     # TODO: assert downloaded does not exist, or perhaps replace it?
     if status != 200:
@@ -79,6 +77,7 @@ def _save_article(article, response, timestamp):
                                    fetch_when=timestamp,
                                    canonical_url=canonical)
     downloaded.save()
+    article.save()
 
 
 def _save_log(article, prior_status, hops, exc):
@@ -104,6 +103,7 @@ def _save_log(article, prior_status, hops, exc):
     json_log(**data)
 
 
+@transaction.atomic
 def download_and_save(article_id):
     try:
         article = Article.objects.get(id=article_id)
@@ -139,6 +139,7 @@ def worker_callback(channel, method, properties, body):
     download_and_save(body)
     channel.basic_ack(delivery_tag=method.delivery_tag)
     time.sleep(random.random())
+    reset_queries()
 
 
 def worker(channel, queue):

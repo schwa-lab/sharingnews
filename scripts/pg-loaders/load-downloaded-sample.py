@@ -8,6 +8,7 @@ import traceback
 from bs4 import UnicodeDammit
 import django
 from django.core.exceptions import ObjectDoesNotExist
+from django.db import transaction
 
 from likeable.models import Article, DownloadedArticle, ShareWarsUrl
 from likeable.cleaning import extract_canonical, compress_html
@@ -17,6 +18,7 @@ django.setup()
 # Uh oh. What do we do with URLs that share a canonical but don't have same CSS? Ideally we should download the canonical, but that's not something we've done so far.
 
 
+@transaction.atomic
 def process_path(stat_path):
     print(stat_path)
     # could map by ID, instead using canonical for certainty
