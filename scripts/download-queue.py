@@ -1,51 +1,22 @@
 #!/usr/bin/env python
 
 from __future__ import print_function, absolute_import, division
-import argparse
-import sys
 import time
 import random
 from collections import defaultdict
-import datetime
 import traceback
-import logging
-import json
-import pytz
 
-import pika
-import django
-from django.db import reset_queries, transaction
+from django.db import transaction
 from bs4 import UnicodeDammit
 
+from likeable.idqueue import main, utcnow, json_log
 from likeable.models import Article, DownloadedArticle
 from likeable.scraping import (fetch_with_refresh, HTTP_ENCODINGS,
                                FetchException, get_mime)
 from likeable.cleaning import compress_html, extract_canonical
 
-django.setup()
-now = lambda: datetime.datetime.utcnow().replace(tzinfo=pytz.utc)
-logger = logging.getLogger(__file__)
-
 
 domain_encodings = defaultdict(lambda: list(HTTP_ENCODINGS))
-
-
-def json_log(**data):
-    data['timestamp'] = now().isoformat()
-    logger.info(json.dumps(data))
-
-
-def enqueue(channel, queue, f):
-    i = 0
-    for l in f:
-        i += 1
-        channel.basic_publish(exchange='',
-                              routing_key=queue,
-                              body=str(int(l)),
-                              properties=pika.BasicProperties(
-                                  delivery_mode=2,  # make message persistent
-                              ))
-    json_log(enqueued=i)
 
 
 def _save_article(article, response, timestamp):
@@ -104,7 +75,7 @@ def _save_log(article, prior_status, hops, exc):
 
 
 @transaction.atomic
-def download_and_save(article_id):
+def download_and_save(args, article_id):
     try:
         article = Article.objects.get(id=article_id)
     except Article.DoesNotExist:
@@ -118,8 +89,9 @@ def download_and_save(article_id):
         json_log(article_id=article_id, status='skipped')
         return
 
+    time.sleep(random.random())
     domain = url.split('/', 3)[2]
-    timestamp = now()
+    timestamp = utcnow()
     try:
         hops = fetch_with_refresh(url,
                                   accept_encodings=domain_encodings[domain])
@@ -135,58 +107,5 @@ def download_and_save(article_id):
     _save_log(article, prior_status, hops, exc)
 
 
-def worker_callback(channel, method, properties, body):
-    download_and_save(body)
-    channel.basic_ack(delivery_tag=method.delivery_tag)
-    time.sleep(random.random())
-    reset_queries()
-
-
-def worker(channel, queue):
-    channel.basic_qos(prefetch_count=1)
-    channel.basic_consume(worker_callback, queue=queue)
-    print('Waiting for IDs to fetch. To exit press CTRL+C', file=sys.stderr)
-    channel.start_consuming()
-
-
-def main():
-    import os
-    import socket
-    default_log_prefix = os.path.expanduser('~likeable/logs/fetch/'
-                                            'fetch-{}-{}.log.bz2'
-                                            ''.format(socket.gethostname(),
-                                                      os.getpid()))
-    ap = argparse.ArgumentParser()
-    ap.add_argument('-H', '--host', default='localhost')
-    ap.add_argument('--port', default=None)
-    ap.add_argument('--queue', default='likeable-id-download')
-    ap.add_argument('--log-path', default=default_log_prefix)
-    subs = ap.add_subparsers()
-    enqueue_ap = subs.add_parser('enqueue')
-    enqueue_ap.set_defaults(app='enqueue')
-    enqueue_ap.add_argument('-f', '--infile',
-                            type=argparse.FileType('r'), default=sys.stdin,
-                            help='Path where IDs are listed (default: STDIN)')
-    worker_ap = subs.add_parser('worker')
-    worker_ap.set_defaults(app='worker')
-    args = ap.parse_args()
-
-    logger.setLevel(logging.DEBUG)
-    handler = logging.handlers.TimedRotatingFileHandler(args.log_path,
-                                                        when='D',
-                                                        encoding='bz2')
-    print('Logging to', args.log_path + '*', file=sys.stderr)
-    logger.addHandler(handler)
-
-    conn_params = pika.ConnectionParameters(host=args.host, port=args.port)
-    connection = pika.BlockingConnection(conn_params)
-    channel = connection.channel()
-    channel.queue_declare(queue=args.queue, durable=True)
-    if args.app == 'worker':
-        worker(channel, args.queue)
-    else:
-        enqueue(channel, args.queue, args.infile)
-    connection.close()
-
 if __name__ == '__main__':
-    main()
+    main('fetch', download_and_save)

@@ -2,6 +2,8 @@
 from __future__ import print_function, absolute_import, division
 import re
 import logging
+import datetime
+import pytz
 
 from lxml import etree
 from scrapy.selector import csstranslator
@@ -12,6 +14,10 @@ from django.core.urlresolvers import reverse
 from .cleaning import xml_unescape
 
 logger = logging.getLogger(__name__)
+
+
+def utcnow():
+    return datetime.datetime.utcnow().replace(tzinfo=pytz.utc)
 
 
 class UrlSignatureQS(models.query.QuerySet):
@@ -51,7 +57,9 @@ class UrlSignature(models.Model):
     signature = models.CharField(max_length=256, unique=True, db_index=True)  # not sure if it's a good idea to use this as a string primary key. would make SpideredUrl big.
     base_domain = models.CharField(max_length=50, db_index=True)  # oversized due to broken data :(
 
+    modified_when = models.DateTimeField(default=utcnow)  # selectors modified at this timestamp
     body_html_selector = models.CharField(max_length=1000, null=True)
+    body_text_selector = models.CharField(max_length=1000, null=True)
     headline_selector = models.CharField(max_length=1000, null=True)
     dateline_selector = models.CharField(max_length=1000, null=True)
     byline_selector = models.CharField(max_length=1000, null=True)
@@ -62,6 +70,7 @@ class UrlSignature(models.Model):
 
     # Accessors for converted form
     body_html_xpath = _css_to_xpath_descriptor('body_html_selector')
+    body_text_xpath = _css_to_xpath_descriptor('body_text_selector')
     headline_xpath = _css_to_xpath_descriptor('headline_selector')
     dateline_xpath = _css_to_xpath_descriptor('dateline_selector')
     byline_xpath = _css_to_xpath_descriptor('byline_selector')
@@ -162,13 +171,14 @@ class DownloadedArticle(models.Model):
     in_dev_sample = models.BooleanField(default=False)
     html = models.TextField()  # fetched HTML content normed to UTF-8, with some lossy compression
     fetch_when = models.DateTimeField(null=True)
+    scrape_when = models.DateTimeField(null=True)  # set to signature's modified_when, not scrape time
     canonical_url = models.TextField(null=True)
 
-    fields_dirty = models.BooleanField(default=True)
-    #    do we need another field to indicate our scraping method?
+    EXTRACTED_FIELDS = ['headline', 'dateline', 'byline', 'body_text']
     headline = models.TextField(null=True)
     dateline = models.TextField(null=True)
     byline = models.TextField(null=True)
+    body_text = models.TextField(null=True)
     body_html = models.TextField(null=True)  # should this be stored?
     # media = models.ManyToMany(MediaItem)
     # comments_data = models.OneToOneField(CommentsData)
@@ -199,13 +209,6 @@ class DownloadedArticle(models.Model):
     def parsed_html(self):
         return etree.fromstring(self.html, parser=etree.HTMLParser(),
                                 base_url=self.article.url)
-
-    def evaluate_xpaths(self, xpaths):
-        parsed = self._parsed_html
-        xpatheval = etree.XPathEvaluator(parsed)
-        # XXX might be faster to accept etree.XPath instances and not use XPathEvaluator
-        # TODO: perhaps convert elements back to HTML/text where appropriate
-        return [xpatheval(xpath) for xpath in xpaths]
 
 
 class FacebookStat(object):
