@@ -4,7 +4,7 @@
 
 <!-- for now we'll pretend we're only dealing with one field -->
 <div class=".selentry">
-<label>CSS selector: <input id="selector" value=""></label>
+<label>CSS selector: <input id="selector" value="{{selector}}"></label>
 or <a href="#" id="copy-selector-link">copy ...</a>
 
 <br />
@@ -13,7 +13,6 @@ or <a href="#" id="copy-selector-link">copy ...</a>
 </div>
 
 <h2>Development sample</h2>
-<table>
 <ul id="devsample">
 {% for article in dev_sample %}
   <li class="deventry devsample{{article.id}}" data-id="{{article.id}}">{% include '_article_link.html' with article=article only %}</li>
@@ -53,18 +52,8 @@ jQuery.fn.setMatched = function(val) {
   return this;
 }
 
-$.fn.enterKey = function (fnc) {
-    return this.each(function () {
-        $(this).keypress(function (ev) {
-            var keycode = (ev.keyCode ? ev.keyCode : ev.which);
-            if (keycode == '13') {
-                fnc.call(this, ev);
-            }
-        })
-    })
-}
 $(document).ready(function() {
-  $('#devsample > li').append(' <span class="matched"></span><ol class="matched-content"></ol>').setMatched('?');
+  $('#devsample > li').append(' <span class="matched"></span><ol class="matched-content"></ol>');
   $('#selector').enterKey(function(){ $('#seltest').click(); });
   $('#selector').select();
 
@@ -131,5 +120,10 @@ $(document).ready(function() {
     });
   });
 });
+{% if eval_on_load %}
+$(document).ready(function(){
+  $('#seltest').click();
+});
+{% endif %}
 </script>
 {% endblock %}

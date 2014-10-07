@@ -129,12 +129,20 @@ def collection(request, sig=None, period=None, start=None, end=None):
 
 
 def extractors(request, sig):
+    field = 'body_text'
     signature = get_object_or_404(UrlSignature, signature=sig)
+    selector = request.GET.get('selector') or getattr(signature, field + '_selector') or ''
+    eval_on_load = request.GET.get('autoeval')
     articles = signature.article_set
     dev_sample = articles.filter(downloaded__in_dev_sample=True)
+    #domain_sigs = articles.filter(url_signature__base_domain=signature.base_domain).signature_frequencies()
     return render_to_response('extractors.html',
                               {'params': {'sig': sig},
-                               'dev_sample': dev_sample,},
+                               'selector': selector,
+                               'eval_on_load': eval_on_load,
+                               'dev_sample': dev_sample,
+                               #'domain_sigs': domain_sigs,
+                               },
                               context_instance=RequestContext(request))
 
 
