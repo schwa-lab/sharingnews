@@ -9,6 +9,7 @@ urlpatterns = patterns('',
     url(r'^article/(?P<id>[0-9]+)$', 'likeable.views.article', name='article'),
     url(r'^article/sw/(?P<swid>[0-9]+)$', 'likeable.views.article_by_swid', name='article_by_swid'),  # problematic given deduplication
     url(r'^article/url/(.+)$', 'likeable.views.article_by_url', name='article_by_url'),
+    url(r'^/?$', 'likeable.views.collection', name='collection'),
     url(r'^collection/(?P<start>{m})?-(?P<end>{m})?(?:/(?P<sig>.+))?$'.format(m=MONTH_PATTERN), 'likeable.views.collection', name='collection'),
     #url(r'^collection/(?P<period>{})(?:/(?P<sig>.+))?$'.format(MONTH_PATTERN), 'likeable.views.collection', name='collection-period'),
 

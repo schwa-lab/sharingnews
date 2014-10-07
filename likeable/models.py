@@ -174,7 +174,7 @@ class DownloadedArticle(models.Model):
     scrape_when = models.DateTimeField(null=True)  # set to signature's modified_when, not scrape time
     canonical_url = models.TextField(null=True)
 
-    EXTRACTED_FIELDS = ['headline', 'dateline', 'byline', 'body_text']
+    EXTRACTED_FIELDS = ['headline', 'dateline', 'byline', 'body_text', 'body_html']
     headline = models.TextField(null=True)
     dateline = models.TextField(null=True)
     byline = models.TextField(null=True)

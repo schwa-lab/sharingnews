@@ -63,7 +63,7 @@ $.fn.enterKey = function (fnc) {
         })
     })
 }
-$(window).load(function() {
+$(document).ready(function() {
   $('#devsample > li').append(' <span class="matched"></span><ol class="matched-content"></ol>').setMatched('?');
   $('#selector').enterKey(function(){ $('#seltest').click(); });
   $('#selector').select();
@@ -96,6 +96,39 @@ $(window).load(function() {
       return;
     $(this).closest('.deventry').find('.matched-content').toggle();
     return;
+  });
+
+  $('#copy-selector-link').click(function() {
+    if ($('#copy-selector-table')[0]) {
+      $('#copy-selector-table').DataTable().destroy(true);
+      return;
+    }
+    function renderSig(data, type, row, meta) {
+      if (!data || data == "") return;
+      // XXX: consider django-js-reverse for sanity
+      return '<a href="{% url 'extractors' sig='SIG' %}" target="_blank">SIG</a>'.replace(/SIG/g, data);
+    }
+    var table = $('<table id="copy-selector-table" class="display" />').insertAfter(this).DataTable({
+      // TODO: set field dynamically
+      ajax: "{% url 'prior_extractors' field='body_text' sig=params.sig %}",
+      order: [[ 3, "desc" ], [1, "desc"]],
+      // XXX: there must be a nicer way to do this!?
+      rowCallback: function(row, data) {
+        // click for CSS selector
+        console.log($('td:first', row));
+        $('td:first', row).wrapInner($('<a href="#" />').click(function() {
+          $('#selector').val($(this).text());
+          table.destroy(true);
+        }));
+      },
+      columns: [
+        {data: 'selector', title: 'CSS selector'},
+        {data: 'overall', title: '#sigs', type: 'num'},
+        {data: 'overall_example', title: 'example', render: renderSig},
+        {data: 'domain', defaultContent: "0", title: '#sigs in domain', type: 'num'},
+        {data: 'domain_example', defaultContent: "", title: 'example', render: renderSig},
+      ],
+    });
   });
 });
 </script>

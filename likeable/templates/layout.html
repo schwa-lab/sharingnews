@@ -10,7 +10,9 @@
 		{% block css %}{% endblock %}
         <script type="text/javascript" src="{% static 'js/jquery.js' %}"></script>
         <script type="text/javascript" src="{% static 'js/jquery-ui.min.js' %}"></script>
+        <script type="text/javascript" src="http://cdn.datatables.net/1.10.2/js/jquery.dataTables.min.js"></script>
         <link rel="stylesheet" href="{% static 'css/jquery-ui.min.css' %}" type="text/css">
+        <link rel="stylesheet" href="http://cdn.datatables.net/1.10.2/css/jquery.dataTables.min.css" type="text/css">
 	</head>
 	<body>
 		{% block header %}
@@ -21,7 +23,6 @@
 		<article id="content">
 			{% block content %}{% endblock %}
 		</article>
-
 
     {% block js %}{% endblock %}
 	<script type="text/javascript" src="{% static 'js/site.js' %}"></script>
