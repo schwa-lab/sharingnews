@@ -207,7 +207,9 @@ class DownloadedArticle(models.Model):
 
     @property
     def parsed_html(self):
-        return etree.fromstring(self.html, parser=etree.HTMLParser(),
+        # etree will not accept encoding header with unicode input:
+        html = re.sub('(?i)^([^>]*) encoding=[^> ]*', r'\1', self.html)
+        return etree.fromstring(html, parser=etree.HTMLParser(),
                                 base_url=self.article.url)
 
 

@@ -58,6 +58,7 @@ def main(name, process_cb, argparse_cb=None):
     ap.add_argument('--port', default=None)
     ap.add_argument('--queue', default='likeable-id-{}'.format(name))
     ap.add_argument('--log-path', default=default_log_prefix)
+
     subs = ap.add_subparsers()
     enqueue_ap = subs.add_parser('enqueue')
     enqueue_ap.set_defaults(app='enqueue')
@@ -66,6 +67,9 @@ def main(name, process_cb, argparse_cb=None):
                             help='Path where IDs are listed (default: STDIN)')
     worker_ap = subs.add_parser('worker')
     worker_ap.set_defaults(app='worker')
+    count_ap = subs.add_parser('count')
+    count_ap.set_defaults(app='count')
+
     if argparse_cb is not None:
         argparse_cb(ap)
     args = ap.parse_args()
@@ -74,16 +78,19 @@ def main(name, process_cb, argparse_cb=None):
     logger.setLevel(logging.DEBUG)
     handler = logging.handlers.TimedRotatingFileHandler(args.log_path,
                                                         when='D',
-                                                        encoding='bz2')
+                                                        encoding='bz2',
+                                                        delay=True)
     print('Logging to', args.log_path + '*', file=sys.stderr)
     logger.addHandler(handler)
 
     conn_params = pika.ConnectionParameters(host=args.host, port=args.port)
     connection = pika.BlockingConnection(conn_params)
     channel = connection.channel()
-    channel.queue_declare(queue=args.queue, durable=True)
+    queue = channel.queue_declare(queue=args.queue, durable=True, passive=args.app == 'count')
     if args.app == 'worker':
         worker(channel, args.queue, process_cb, args)
-    else:
+    elif args.app == 'enqueue':
         enqueue(channel, args.queue, args.infile)
+    elif args.app == 'count':
+        print(queue.method.message_count)
     connection.close()
