@@ -1,3 +1,12 @@
+{% load getattr %}
+<h2>Extracted fields</h2>
+<dl>
+{% for field in extracted_fields %}
+  <dt><tt><a href="{% url 'extractor' field=field sig=article.url_signature.signature %}" title="Develop selector for this field/signature">{{field}}</a></tt></dt>
+  {% if article.downloaded|getattr:field %}<dd><pre>{{article.downloaded|getattr:field}}</pre></dd>{% else %}<dd>&mdash;</dd>{% endif %}
+{% endfor %}
+</dl>
+
 <h2>Unsupervised extractions</h2>
 <h3>Python-Readability</h3>
 <dl>

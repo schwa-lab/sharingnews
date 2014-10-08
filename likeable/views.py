@@ -6,15 +6,19 @@ from lxml import etree
 
 from jsonview.decorators import json_view
 from django.shortcuts import render_to_response, redirect, get_object_or_404
-from django.http import Http404
+from django.http import Http404, HttpResponseBadRequest
 from django.template import RequestContext
-from .models import SpideredUrl, Article, UrlSignature, css_to_xpath
+from django.core.urlresolvers import reverse
+
+from .models import SpideredUrl, Article, DownloadedArticle, UrlSignature, css_to_xpath
+from .scraping import extractions_as_unicode
 
 
 def article(request, id):
     article = get_object_or_404(Article, id=id)
     return render_to_response('article.html',
-                              {'article': article},
+                              {'article': article,
+                               'extracted_fields': DownloadedArticle.EXTRACTED_FIELDS},
                               context_instance=RequestContext(request))
 
 
@@ -128,22 +132,44 @@ def collection(request, sig=None, period=None, start=None, end=None):
                               context_instance=RequestContext(request))
 
 
-def extractors(request, sig):
-    field = 'body_text'
-    signature = get_object_or_404(UrlSignature, signature=sig)
+def get_extractor(request, signature, field):
     selector = request.GET.get('selector') or getattr(signature, field + '_selector') or ''
     eval_on_load = request.GET.get('autoeval')
     articles = signature.article_set
     dev_sample = articles.filter(downloaded__in_dev_sample=True)
     #domain_sigs = articles.filter(url_signature__base_domain=signature.base_domain).signature_frequencies()
-    return render_to_response('extractors.html',
-                              {'params': {'sig': sig},
+    return render_to_response('extractor.html',
+                              {'params': {'sig': signature.signature, 'field': field},
+                               'fields': DownloadedArticle.EXTRACTED_FIELDS,
                                'selector': selector,
                                'eval_on_load': eval_on_load,
                                'dev_sample': dev_sample,
                                #'domain_sigs': domain_sigs,
                                },
                               context_instance=RequestContext(request))
+
+
+def post_extractor(request, signature, field):
+    if 'selector' not in request.POST:
+        return HttpResponseBadRequest('Expected selector parameter')
+    selector = request.POST.get('selector')
+    try:
+        signature.set_selector(field, selector)
+    except Exception as e:
+        return HttpResponseBadRequest('Error in setting selector and converting to XPath: {!r}'.format(e))
+    signature.save()
+    return redirect(reverse('extractor',
+                            kwargs={'field': field, 'sig': signature.signature}))
+
+
+def extractor(request, sig, field=DownloadedArticle.EXTRACTED_FIELDS[0]):
+    if field not in DownloadedArticle.EXTRACTED_FIELDS:
+        raise Http404('Field {} unknown. Expected one of {}'.format(field, DownloadedArticle.EXTRACTED_FIELDS))
+    signature = get_object_or_404(UrlSignature, signature=sig)
+    if request.method.lower() == 'post':
+        return post_extractor(request, signature, field)
+    else:
+        return get_extractor(request, signature, field)
 
 
 @json_view
@@ -159,8 +185,7 @@ def extractor_eval(request, sig):
         parsed = article.downloaded.parsed_html
         for selector, xpath in xpaths:
             # XXX: need correct test for element
-            results[selector][article.id] = [etree.tounicode(el) if hasattr(el, 'tag') else unicode(el)
-                                             for el in xpath(parsed)]
+            results[selector][article.id] = extractions_as_unicode(xpath(parsed))
     return results
 
 

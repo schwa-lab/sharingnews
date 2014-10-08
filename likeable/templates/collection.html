@@ -10,7 +10,7 @@
     <dt>Total</dt><dd>{{articles.count}}</dd>
     <dt>Fetched</dt><dd>{{fetched.count}}</dd>
     <dt>Successful fetch</dt><dd>{{fetched_success.count}}</dd>
-    <dt>{% if not subdivisions %}<a href="{% url 'extractors' sig=params.sig %}">{% endif %}Extractor development{% if not subdivisions %}</a>{% endif %}</dt><dd>{{dev_sample.count}}</dd>
+    <dt>{% if not subdivisions %}<a href="{% url 'extractor' field='headline' sig=params.sig %}">{% endif %}Extractor development{% if not subdivisions %}</a>{% endif %}</dt><dd>{{dev_sample.count}}</dd>
 </dl>
 
 <h2>Total shares summary</h2>

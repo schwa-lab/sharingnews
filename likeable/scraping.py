@@ -3,6 +3,7 @@ import re
 import urlparse
 import sys
 from xml.sax.saxutils import unescape as xml_unescape
+from lxml import etree
 
 import requests
 
@@ -74,3 +75,17 @@ def fetch_with_refresh(url, accept_encodings=HTTP_ENCODINGS, max_delay=20):
 def get_mime(resp):
     return resp.headers.get('content-type', '').split(';')[0]
 
+
+def extractions_as_unicode(extr, join=False):
+    out = []
+    for el in extr:
+        if hasattr(el, 'tag'):
+            el = etree.tounicode(el)
+        else:
+            el = unicode(el)
+            if not el.strip():
+                continue
+        out.append(el.replace('\r', '').replace('\n', ''))
+    if join:
+        out = '\n'.join(out)
+    return out

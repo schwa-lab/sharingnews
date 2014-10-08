@@ -9,16 +9,10 @@ from django.db import transaction
 
 from likeable.idqueue import main, json_log
 from likeable.models import DownloadedArticle
+from likeable.scraping import extractions_as_unicode
 
 
 DEST_FIELDS = DownloadedArticle.EXTRACTED_FIELDS
-
-
-def join_extractions(extr):
-    extr = [etree.tounicode(el) if hasattr(el, 'tag') else unicode(el)
-            for el in extr]
-    extr = [s.replace('\r', '').replace('\n', ' ') for s in extr]
-    return '\n'.join(extr)
 
 
 @transaction.atomic
@@ -58,7 +52,7 @@ def extract(args, article_id):
             setattr(downloaded, field, None)
             continue
         extr = xpatheval(xpath)
-        setattr(downloaded, field, join_extractions(extr) or None)
+        setattr(downloaded, field, extractions_as_unicode(extr, join=True) or None)
 
     downloaded.scrape_when = signature.modified_when
     downloaded.save()

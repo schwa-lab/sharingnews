@@ -13,7 +13,7 @@ urlpatterns = patterns('',
     url(r'^collection/(?P<start>{m})?-(?P<end>{m})?(?:/(?P<sig>.+))?$'.format(m=MONTH_PATTERN), 'likeable.views.collection', name='collection'),
     #url(r'^collection/(?P<period>{})(?:/(?P<sig>.+))?$'.format(MONTH_PATTERN), 'likeable.views.collection', name='collection-period'),
 
-    url(r'^extractors/(?P<sig>.+)', 'likeable.views.extractors', name='extractors'),
+    url(r'^extractor/(?P<field>\w+)/(?P<sig>.+)', 'likeable.views.extractor', name='extractor'),
     url(r'^extractor-eval/(?P<sig>.+)', 'likeable.views.extractor_eval', name='extractor_eval'),
     url(r'^prior-extractors/(?P<field>[a-z_0-9]+)/(?P<sig>.+)', 'likeable.views.prior_extractors', name='prior_extractors'),
 

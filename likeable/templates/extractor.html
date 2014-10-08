@@ -1,16 +1,27 @@
 {% extends "layout.html" %}
 {% block content %}
-<h1>Developing CSS selectors for <a href="{% url 'collection' sig=params.sig %} ">{{ params.sig }}</a></h1>
+<h1>Developing
+    <tt>{{params.field}}</tt>
+    selectors for
+    <a href="{% url 'collection' sig=params.sig %} ">{{ params.sig }}</a></h1>
+
+    <nav>
+    <label>
+    Work on another field:
+    <select id="fieldsel">{% for field in fields %}<option value="{% url 'extractor' field=field sig=params.sig %}"{% if field == params.field %}selected="selected"{% endif %}>{{field}}</option>{% endfor %}</select>
+    </label>
+    </nav>
 
 <!-- for now we'll pretend we're only dealing with one field -->
-<div class=".selentry">
-<label>CSS selector: <input id="selector" value="{{selector}}"></label>
+<form class=".selentry" method="post">
+{% csrf_token %}
+<label>CSS selector: <input size="50" id="selector" name="selector" value="{{selector}}"></label>
 or <a href="#" id="copy-selector-link">copy ...</a>
 
 <br />
 <input type="button" id="seltest" value="Evaluate">
-<input type="button" id="selsave" value="Save">
-</div>
+<input type="submit" id="selsave" value="Save">
+</form>
 
 <h2>Development sample</h2>
 <ul id="devsample">
@@ -54,7 +65,7 @@ jQuery.fn.setMatched = function(val) {
 
 $(document).ready(function() {
   $('#devsample > li').append(' <span class="matched"></span><ol class="matched-content"></ol>');
-  $('#selector').enterKey(function(){ $('#seltest').click(); });
+  $('#selector').enterKey(function(ev){ $('#seltest').click(); ev.preventDefault(); return false; });
   $('#selector').select();
 
   $('#seltest').click(function(){
@@ -78,6 +89,7 @@ $(document).ready(function() {
           'json').always(function (){
             $('#seltest').prop('disabled', false);
           });
+    return false;
   });
 
   $('#devsample > li .matched').click(function() {
@@ -95,7 +107,7 @@ $(document).ready(function() {
     function renderSig(data, type, row, meta) {
       if (!data || data == "") return;
       // XXX: consider django-js-reverse for sanity
-      return '<a href="{% url 'extractors' sig='SIG' %}" target="_blank">SIG</a>'.replace(/SIG/g, data);
+      return '<a href="{% url 'extractor' field=params.field sig='SIG' %}" target="_blank">SIG</a>'.replace(/SIG/g, data);
     }
     var table = $('<table id="copy-selector-table" class="display" />').insertAfter(this).DataTable({
       // TODO: set field dynamically
@@ -118,6 +130,11 @@ $(document).ready(function() {
         {data: 'domain_example', defaultContent: "", title: 'example', render: renderSig},
       ],
     });
+  });
+
+  $('#fieldsel').change(function(){
+    // TODO: error if not saved
+    window.location = $(this).val();
   });
 });
 {% if eval_on_load %}

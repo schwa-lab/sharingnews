@@ -65,6 +65,20 @@ class UrlSignature(models.Model):
     byline_selector = models.CharField(max_length=1000, null=True)
     media_selector = models.CharField(max_length=1000, null=True)
 
+    def set_selector(self, field, value):
+        if not value:
+            value = None
+        if value == getattr(self, field + '_selector'):
+            return
+
+        setattr(self, field + '_selector', value)
+        # smoke test
+        getattr(self, field + '_xpath')
+        self.set_modified()
+
+    def set_modified(self):
+        self.modified_when = utcnow()
+
     # ?require match zero or one object, except media_selector
     # when changed, rerun over signature dev articles; maybe should store stats with selectors
 
