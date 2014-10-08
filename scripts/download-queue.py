@@ -101,6 +101,10 @@ def download_and_save(args, article_id):
         exc = None
 
     if exc is None:
+        if not hops[-1].content and hops[-1].status_code == 200:
+            json_log(article_id=article_id, status='empty content')
+            return
+
         _save_article(article, hops[-1], timestamp)
     # TODO: perhaps save pseudo-status on exception
 

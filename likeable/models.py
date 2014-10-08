@@ -207,6 +207,10 @@ class DownloadedArticle(models.Model):
 
     @property
     def parsed_html(self):
+        if not self.html:
+            # XXX: Perhaps AttributeError more appropriate,
+            #      but needs to apply when fromstring returns None too
+            return
         # etree will not accept encoding header with unicode input:
         html = re.sub('(?i)^([^>]*) encoding=[^> ]*', r'\1', self.html)
         return etree.fromstring(html, parser=etree.HTMLParser(),
