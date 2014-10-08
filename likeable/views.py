@@ -139,7 +139,9 @@ def get_extractor(request, signature, field):
     dev_sample = articles.filter(downloaded__in_dev_sample=True)
     #domain_sigs = articles.filter(url_signature__base_domain=signature.base_domain).signature_frequencies()
     return render_to_response('extractor.html',
-                              {'params': {'sig': signature.signature, 'field': field},
+                              {'params': {'sig': signature.signature,
+                                          'field': field,
+                                          'msg': request.GET.get('msg')},
                                'fields': DownloadedArticle.EXTRACTED_FIELDS,
                                'selector': selector,
                                'eval_on_load': eval_on_load,
@@ -154,12 +156,17 @@ def post_extractor(request, signature, field):
         return HttpResponseBadRequest('Expected selector parameter')
     selector = request.POST.get('selector')
     try:
-        signature.set_selector(field, selector)
+        success = signature.set_selector(field, selector)
     except Exception as e:
         return HttpResponseBadRequest('Error in setting selector and converting to XPath: {!r}'.format(e))
     signature.save()
+    if success:
+        msg = 'Selector%20saved%20and%20marked%20for%20re-extraction'
+    else:
+        msg = 'No%20change:%20not%20marked%20for%20re-extraction.'
     return redirect(reverse('extractor',
-                            kwargs={'field': field, 'sig': signature.signature}))
+                            kwargs={'field': field, 'sig': signature.signature}) +
+                    '?msg=' + msg)
 
 
 def extractor(request, sig, field=DownloadedArticle.EXTRACTED_FIELDS[0]):

@@ -5,15 +5,19 @@
     selectors for
     <a href="{% url 'collection' sig=params.sig %} ">{{ params.sig }}</a></h1>
 
-    <nav>
-    <label>
-    Work on another field:
-    <select id="fieldsel">{% for field in fields %}<option value="{% url 'extractor' field=field sig=params.sig %}"{% if field == params.field %}selected="selected"{% endif %}>{{field}}</option>{% endfor %}</select>
-    </label>
-    </nav>
+{% if params.msg %}
+<aside class="text-success"><p>{{params.msg}}</p></aside>
+{% endif %}
+
+<nav>
+<label>
+Work on another field:
+<select id="fieldsel">{% for field in fields %}<option value="{% url 'extractor' field=field sig=params.sig %}"{% if field == params.field %}selected="selected"{% endif %}>{{field}}</option>{% endfor %}</select>
+</label>
+</nav>
 
 <!-- for now we'll pretend we're only dealing with one field -->
-<form class=".selentry" method="post">
+<form id="selentry" method="post">
 {% csrf_token %}
 <label>CSS selector: <input size="50" id="selector" name="selector" value="{{selector}}"></label>
 or <a href="#" id="copy-selector-link">copy ...</a>
@@ -136,7 +140,17 @@ $(document).ready(function() {
     // TODO: error if not saved
     window.location = $(this).val();
   });
+
+  var saved = false;
+  $('#selentry').submit(function(){saved = true;});
+  $(window).on('beforeunload', function(){
+    if (!saved && $('#selector').val() != $('#selector').attr('value')) {
+      return "The selector has been changed but not saved."
+    }
+  });
+
 });
+
 {% if eval_on_load %}
 $(document).ready(function(){
   $('#seltest').click();

@@ -69,12 +69,13 @@ class UrlSignature(models.Model):
         if not value:
             value = None
         if value == getattr(self, field + '_selector'):
-            return
+            return False
 
         setattr(self, field + '_selector', value)
         # smoke test
         getattr(self, field + '_xpath')
         self.set_modified()
+        return True
 
     def set_modified(self):
         self.modified_when = utcnow()
