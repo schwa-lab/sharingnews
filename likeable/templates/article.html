@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 {% block content %}
 <h2>Record</h2>
-<dl>
+<dl class="dl-horizontal">
     {% if article.title %}<dt>Title as shown in FB share</dt><dd>{{article.title}}</dd>{% endif %}
     {% if article.description %}<dt>Description as shown in FB share</dt><dd>{{article.description}}</dd>{% endif %}
     {% if article.fb_created %}<dt>FB created</dt><dd>{{article.fb_created}}</dd>{% endif %}

@@ -1,12 +1,14 @@
 {% extends "layout.html" %}
+{% block header %}
+<nav><ol class="breadcrumb">{% for crumb in breadcrumbs %}<li><a href="{% if crumb %}{% url 'collection' sig=crumb %}{% else %}{% url 'collection' %}{% endif %}">{% if crumb %}{{crumb}}{% else %}All domains{% endif %}</a></li>{% endfor %}</ol></nav>
+{% endblock %}
 {% block content %}
-<nav>{% for crumb in breadcrumbs %}<a href="{% if crumb %}{% url 'collection' sig=crumb %}{% else %}{% url 'collection' %}{% endif %}">{% if crumb %}{{crumb}}{% else %}All domains{% endif %}</a> &gt; {% endfor %}</nav>
 <h1>{% if params.sig %}{{params.sig}}{% else %}All domains{% endif %}
 {% if params.period %}in {{params.period}}{% endif %}
 {% if params.start and params.end %}in {{params.start}} to {{params.end}}{% elif params.start %}since {{params.start}}{% elif params.end %}until {{params.end}}{% endif %}
 </h1>
 
-<dl>
+<dl class="dl-horizontal">
     <dt>Total</dt><dd>{{articles.count}}</dd>
     <dt>Fetched</dt><dd>{{fetched.count}}</dd>
     <dt>Successful fetch</dt><dd>{{fetched_success.count}}</dd>
@@ -14,7 +16,7 @@
 </dl>
 
 <h2>Total shares summary</h2>
-<table>
+<table class="table table-striped">
     <thead><tr><th>Bin freq</th><th>Min</th><th>Max</th><th>Avg</th><th>Example</th></tr></thead>
     <tbody>
     {% for bin in share_bins %}
@@ -25,7 +27,7 @@
 
 {% if subdivisions %}
 <h2>Subdivision</h2>
-<table>
+<table class="table table-striped table-condensed">
 	<thead><tr><th>Frequency</th><th>Cumulative</th></tr></thead>
     <tbody>
     {% for sig, count, percent in subdivisions %}

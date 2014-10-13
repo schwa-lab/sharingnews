@@ -6,25 +6,29 @@
     <a href="{% url 'collection' sig=params.sig %} ">{{ params.sig }}</a></h1>
 
 {% if params.msg %}
-<aside class="text-success"><p>{{params.msg}}</p></aside>
+<aside class="alert alert-success"><p>{{params.msg}}</p></aside>
 {% endif %}
 
 <nav>
 <label>
 Work on another field:
-<select id="fieldsel">{% for field in fields %}<option value="{% url 'extractor' field=field sig=params.sig %}"{% if field == params.field %}selected="selected"{% endif %}>{{field}}</option>{% endfor %}</select>
 </label>
+<select id="fieldsel">{% for field in fields %}<option value="{% url 'extractor' field=field sig=params.sig %}"{% if field == params.field %}selected="selected"{% endif %}>{{field}}</option>{% endfor %}</select>
 </nav>
 
 <!-- for now we'll pretend we're only dealing with one field -->
-<form id="selentry" method="post">
+<form id="selentry" method="post" role="form">
 {% csrf_token %}
-<label>CSS selector: <input size="50" id="selector" name="selector" value="{{selector}}"></label>
-or <a href="#" id="copy-selector-link">copy ...</a>
+<div class="form-group">
+	<label for="selector">CSS selector:</label>
+	<input class="form-control" id="selector" name="selector" value="{{selector}}">
+	or <a href="#" id="copy-selector-link">copy <span class="caret"></span></a>
+</div>
 
-<br />
-<input type="button" id="seltest" value="Evaluate">
-<input type="submit" id="selsave" value="Save">
+<div class="btn-group">
+<input class="btn btn-primary" type="button" id="seltest" value="Evaluate">
+<input class="btn btn-success" type="submit" id="selsave" disabled="true" value="Save">
+</div>
 </form>
 
 <h2>Development sample</h2>
@@ -96,6 +100,10 @@ $(document).ready(function() {
     return false;
   });
 
+  $('#selector').on("input", function() {
+  	$('#selsave').prop('disabled', false);
+  });
+
   $('#devsample > li .matched').click(function() {
     if ($(this).data('value') == 0 || $(this).data('value') == '?')
       return;
@@ -113,7 +121,7 @@ $(document).ready(function() {
       // XXX: consider django-js-reverse for sanity
       return '<a href="{% url 'extractor' field=params.field sig='SIG' %}" target="_blank">SIG</a>'.replace(/SIG/g, data);
     }
-    var table = $('<table id="copy-selector-table" class="display" />').insertAfter(this).DataTable({
+    var table = $('<table id="copy-selector-table" class="table table-striped" />').insertAfter(this).DataTable({
       // TODO: set field dynamically
       ajax: "{% url 'prior_extractors' field='body_text' sig=params.sig %}",
       order: [[ 3, "desc" ], [1, "desc"]],
