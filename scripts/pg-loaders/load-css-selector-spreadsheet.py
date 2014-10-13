@@ -19,10 +19,6 @@ for entry in csv.DictReader(sys.stdin, dialect='excel-tab'):
     sig = UrlSignature.objects.get(signature=sig_text)
     for f in FIELDS:
         sel = entry.get(f) or None
-        setattr(sig, f + '_selector', sel)
-        if sel is None:
-            continue
-        # validate:
-        assert getattr(sig, f + '_xpath') is not None
+        sig.set_selector(f, sel)
     sig.modified_when = utcnow()
     sig.save()

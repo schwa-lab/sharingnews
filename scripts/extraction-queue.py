@@ -4,12 +4,10 @@ from __future__ import print_function, absolute_import, division
 
 import traceback
 
-from lxml import etree
 from django.db import transaction
 
 from likeable.idqueue import main, json_log
 from likeable.models import DownloadedArticle
-from likeable.scraping import extractions_as_unicode
 
 
 DEST_FIELDS = DownloadedArticle.EXTRACTED_FIELDS
@@ -45,14 +43,9 @@ def extract(args, article_id):
     if parsed is None:
         json_log(article_id=article_id, status='parsed_html is None')
         return
-    xpatheval = etree.XPathEvaluator(parsed)
     for field in DEST_FIELDS:
-        xpath = getattr(signature, field + '_xpath')
-        if xpath is None:
-            setattr(downloaded, field, None)
-            continue
-        extr = xpatheval(xpath)
-        setattr(downloaded, field, extractions_as_unicode(extr, join=True) or None)
+        extractor = getattr(signature, 'extract_' + field)
+        setattr(downloaded, field, extractor(parsed, as_unicode='join') or None)
 
     downloaded.scrape_when = signature.modified_when
     downloaded.save()

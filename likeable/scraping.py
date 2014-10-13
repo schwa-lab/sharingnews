@@ -3,9 +3,14 @@ import re
 import urlparse
 import sys
 from xml.sax.saxutils import unescape as xml_unescape
-from lxml import etree
 
+from lxml import etree
+from scrapy.selector import csstranslator
 import requests
+
+from .cache import lru_cache
+
+css_to_xpath = csstranslator.ScrapyHTMLTranslator().css_to_xpath
 
 HTTP_ENCODINGS = ('identity', 'deflate', 'compress', 'gzip')
 meta_refresh_re = re.compile('<meta[^>]*?'
@@ -76,16 +81,31 @@ def get_mime(resp):
     return resp.headers.get('content-type', '').split(';')[0]
 
 
-def extractions_as_unicode(extr, join=False):
-    out = []
-    for el in extr:
-        if hasattr(el, 'tag'):
-            el = etree.tounicode(el)
-        else:
-            el = unicode(el)
-            if not el.strip():
-                continue
-        out.append(el.replace('\r', '').replace('\n', ''))
-    if join:
-        out = '\n'.join(out)
-    return out
+def _node_text(node, _extractor=etree.XPath('.//text() | .//br')):
+    return u' '.join(unicode(el).replace(u'\n', u'').replace(u'\r', u'') if not hasattr(el, 'tag') else u'\n'
+                     for el in _extractor(node))
+
+
+@lru_cache(maxsize=256)
+def _get_extractor(selector):
+    if not selector:
+        return None, False
+    is_text = selector.endswith(' ::text')
+    if is_text:
+        selector = selector[:-7]
+    return etree.XPath(css_to_xpath(selector)), is_text
+
+
+def extract(selector, doc, as_unicode=False):
+    extractor, is_text = _get_extractor(selector)
+    if extractor is None:
+        return None
+    extractions = extractor(doc)
+    if is_text:
+        extractions = [_node_text(el) for el in extractions]
+    if as_unicode:
+        extractions = [etree.tounicode(el) if hasattr(el, 'tag') else unicode(el)
+                       for el in extractions]
+        if as_unicode == 'join':
+            extractions = '\n'.join(extractions)
+    return extractions

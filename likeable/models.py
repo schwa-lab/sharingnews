@@ -6,12 +6,12 @@ import datetime
 import pytz
 
 from lxml import etree
-from scrapy.selector import csstranslator
 from readability import readability
 from django.db import models
 from django.core.urlresolvers import reverse
 
 from .cleaning import xml_unescape
+from .scraping import extract
 
 logger = logging.getLogger(__name__)
 
@@ -35,21 +35,15 @@ class UrlSignatureManager(models.Manager):
         return self.filter(base_domain=domain)
 
 
-css_to_xpath = csstranslator.ScrapyHTMLTranslator().css_to_xpath
+def _make_extractor(field):
+    attr = field + '_selector'
+    def _extractor(self, doc, as_unicode=False):
+        return extract(getattr(self, attr), doc, as_unicode)
+    _extractor.__name__ = 'extract_' + field
+    return _extractor
 
 
-class _css_to_xpath_descriptor(object):
-    def __init__(self, field):
-        self.field = field
-
-    def __get__(self, obj, objtype=None):
-        if obj is None:
-            return self
-        css_sel = getattr(obj, self.field)
-        if css_sel is None:
-            return None
-        # TODO: lrucache on objtype
-        return css_to_xpath(css_sel)
+_empty_doc = etree.fromstring('<x></x>')
 
 
 class UrlSignature(models.Model):
@@ -73,7 +67,7 @@ class UrlSignature(models.Model):
 
         setattr(self, field + '_selector', value)
         # smoke test
-        getattr(self, field + '_xpath')
+        getattr(self, 'extract_' + field)(_empty_doc)
         self.set_modified()
         return True
 
@@ -84,12 +78,12 @@ class UrlSignature(models.Model):
     # when changed, rerun over signature dev articles; maybe should store stats with selectors
 
     # Accessors for converted form
-    body_html_xpath = _css_to_xpath_descriptor('body_html_selector')
-    body_text_xpath = _css_to_xpath_descriptor('body_text_selector')
-    headline_xpath = _css_to_xpath_descriptor('headline_selector')
-    dateline_xpath = _css_to_xpath_descriptor('dateline_selector')
-    byline_xpath = _css_to_xpath_descriptor('byline_selector')
-    media_xpath = _css_to_xpath_descriptor('media_selector')
+    extract_body_html = _make_extractor('body_html')
+    extract_body_text = _make_extractor('body_text')
+    extract_headline = _make_extractor('headline')
+    extract_dateline = _make_extractor('dateline')
+    extract_byline = _make_extractor('byline')
+    extract_media = _make_extractor('media')
 
     def get_absolute_url(self):
         return reverse('likeable.views.collection',

@@ -2,16 +2,14 @@ from __future__ import division, absolute_import, print_function
 import datetime
 from collections import defaultdict
 
-from lxml import etree
-
 from jsonview.decorators import json_view
 from django.shortcuts import render_to_response, redirect, get_object_or_404
 from django.http import Http404, HttpResponseBadRequest
 from django.template import RequestContext
 from django.core.urlresolvers import reverse
 
-from .models import SpideredUrl, Article, DownloadedArticle, UrlSignature, css_to_xpath
-from .scraping import extractions_as_unicode
+from .models import SpideredUrl, Article, DownloadedArticle, UrlSignature
+from .scraping import extract
 
 
 def article(request, id):
@@ -186,13 +184,12 @@ def extractor_eval(request, sig):
     # error if none or too many
     signature = get_object_or_404(UrlSignature, signature=sig)
     dev_sample = signature.article_set.filter(downloaded__in_dev_sample=True).select_related('downloaded')
-    xpaths = [(selector, etree.XPath(css_to_xpath(selector))) for selector in selectors]
     results = defaultdict(dict)
     for article in dev_sample:
         parsed = article.downloaded.parsed_html
-        for selector, xpath in xpaths:
+        for selector in selectors:
             # XXX: need correct test for element
-            results[selector][article.id] = extractions_as_unicode(xpath(parsed))
+            results[selector][article.id] = extract(selector, parsed, as_unicode=True)
     return results
 
 
