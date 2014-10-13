@@ -170,6 +170,7 @@ class Article(models.Model):
     class Meta:
         index_together = [
             ('url_signature', 'fb_created'),
+            ('fetch_status', 'url_signature'),
         ]
 
 
