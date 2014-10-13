@@ -82,6 +82,8 @@ def get_mime(resp):
 
 
 def _node_text(node, _extractor=etree.XPath('.//text() | .//br')):
+    if not hasattr(node, 'tag'):
+        return unicode(node)
     return u' '.join(unicode(el).replace(u'\n', u'').replace(u'\r', u'') if not hasattr(el, 'tag') else u'\n'
                      for el in _extractor(node))
 
@@ -90,9 +92,9 @@ def _node_text(node, _extractor=etree.XPath('.//text() | .//br')):
 def _get_extractor(selector):
     if not selector:
         return None, False
-    is_text = selector.endswith(' ::text')
+    is_text = selector.startswith('((text))')
     if is_text:
-        selector = selector[:-7]
+        selector = selector[8:]
     return etree.XPath(css_to_xpath(selector)), is_text
 
 
