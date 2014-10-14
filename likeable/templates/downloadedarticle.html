@@ -8,6 +8,14 @@
 </dl>
 
 <h2>Unsupervised extractions</h2>
+
+<h3>Semantic annotation</h3>
+<dl class="dl-horizontal">
+	{% for scheme, url, fields in article.downloaded.sniff_semantic_annotation %}
+	<dt{% if fields %} class="bg-success"{% endif %}><a href="{{url}}" title="Parse {{scheme}} annotations">{{scheme}}</a></dt><dd>{% if fields %}<ul>{% for field, count in fields %}<li>{{field}}: {{count}}</li>{% endfor %}</ul>{% else %}&mdash;{% endif %}</dd>
+	{% endfor %}
+</dl>
+
 <h3>Python-Readability</h3>
 <dl class="dl-horizontal">
     {% with article.downloaded.pyreadability as items %}

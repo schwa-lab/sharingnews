@@ -4,6 +4,7 @@ import re
 import logging
 import datetime
 import pytz
+import urllib
 
 from lxml import etree
 from readability import readability
@@ -208,6 +209,33 @@ class DownloadedArticle(models.Model):
     @property
     def meta_fields(self):
         return sorted(self._get_meta_fields())
+
+    SEMANTIC_ANNOTATION_SCHEMES = [
+        ('rdfa', 'http://www.w3.org/2012/pyRdfa/extract?uri={}&format=json&rdfagraph=output&vocab_expansion=false&rdfa_lite=false&embedded_rdf=true&space_preserve=true&vocab_cache=true&vocab_cache_report=false&vocab_cache_refresh=false', [
+            ('property', etree.XPath('//*[@property]')),
+            ('datatype', etree.XPath('//*[@property and @datatype]')),
+            ('content', etree.XPath('//*[@property and @content]')),
+        ]),
+        ('microdata', 'http://rdf.greggkellogg.net/distiller?format=jsonld&in_fmt=microdata&uri={}', [
+            ('itemprop', etree.XPath('//*[@itemprop]')),
+            ('datetime', etree.XPath('//*[@itemprop and @datetime]')),
+        ]),
+        ('hNews microformat', 'https://mf2py.herokuapp.com/parse?url={}', [
+            ('hentry', etree.XPath("//*[@class and contains(concat(' ', normalize-space(@class), ' '), ' hentry ')]")),
+            ('dateline', etree.XPath("//*[@class and contains(concat(' ', normalize-space(@class), ' '), ' hentry ')]/descendant-or-self::*[@class and contains(concat(' ', normalize-space(@class), ' '), ' dateline ')]")),
+        ])
+    ]
+
+    def sniff_semantic_annotation(self):
+        parsed = self.parsed_html
+        for scheme, url_fmt, matchers in self.SEMANTIC_ANNOTATION_SCHEMES:
+            results = []
+            for field, matcher in matchers:
+                n = len(matcher(parsed))
+                if n:
+                    results.append((field, n))
+            url = url_fmt.replace('{}', urllib.quote(self.article.url))
+            yield scheme, url, results
 
     @property
     def pyreadability(self):
