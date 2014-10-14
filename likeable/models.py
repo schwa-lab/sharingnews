@@ -108,7 +108,7 @@ class ArticleQS(models.query.QuerySet):
     def bin_shares(self, bin_max, field_name='binned_shares', shares_field='total_shares'):
         cases = ' '.join('WHEN {} <= {} THEN {}'.format(shares_field, int(m), i)
                          for i, m in enumerate(bin_max))
-        return self.extra(select={field_name: 'CASE {} ELSE {} END'.format(cases, len(bin_max))})
+        return self.filter(total_shares__isnull=False).extra(select={field_name: 'CASE {} ELSE {} END'.format(cases, len(bin_max))})
 
     def annotate_stats(self, field='total_shares'):
         return self.annotate(count=models.Count('pk'),
