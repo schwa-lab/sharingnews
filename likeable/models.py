@@ -212,13 +212,13 @@ class DownloadedArticle(models.Model):
 
     SEMANTIC_ANNOTATION_SCHEMES = [
         ('rdfa', 'http://www.w3.org/2012/pyRdfa/extract?uri={}&format=json&rdfagraph=output&vocab_expansion=false&rdfa_lite=false&embedded_rdf=true&space_preserve=true&vocab_cache=true&vocab_cache_report=false&vocab_cache_refresh=false', [
-            ('property', etree.XPath('//*[@property]')),
-            ('datatype', etree.XPath('//*[@property and @datatype]')),
-            ('content', etree.XPath('//*[@property and @content]')),
+            ('property', etree.XPath('//*[@property]/@property')),
+            ('datatype', etree.XPath('//*[@property and @datatype]/@property')),
+            ('no content', etree.XPath('//*[@property and not(@content)]/@property')),
         ]),
         ('microdata', 'http://rdf.greggkellogg.net/distiller?format=jsonld&in_fmt=microdata&uri={}', [
-            ('itemprop', etree.XPath('//*[@itemprop]')),
-            ('datetime', etree.XPath('//*[@itemprop and @datetime]')),
+            ('itemprop', etree.XPath('//*[@itemprop]/@itemprop')),
+            ('datetime', etree.XPath('//*[@itemprop and @datetime]/@itemprop')),
         ]),
         ('hNews microformat', 'https://mf2py.herokuapp.com/parse?url={}', [
             ('hentry', etree.XPath("//*[@class and contains(concat(' ', normalize-space(@class), ' '), ' hentry ')]")),
@@ -231,9 +231,14 @@ class DownloadedArticle(models.Model):
         for scheme, url_fmt, matchers in self.SEMANTIC_ANNOTATION_SCHEMES:
             results = []
             for field, matcher in matchers:
-                n = len(matcher(parsed))
-                if n:
-                    results.append((field, n))
+                matches = matcher(parsed)
+                if matches:
+                    if not hasattr(matches[0], 'tag'):
+                        values = sorted(set(map(unicode, matches)))
+                    else:
+                        values = None
+                if matches:
+                    results.append((field, len(matches), values))
             url = url_fmt.replace('{}', urllib.quote(self.article.url))
             yield scheme, url, results
 

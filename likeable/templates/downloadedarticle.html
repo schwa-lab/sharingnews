@@ -12,7 +12,7 @@
 <h3>Semantic annotation</h3>
 <dl class="dl-horizontal">
 	{% for scheme, url, fields in article.downloaded.sniff_semantic_annotation %}
-	<dt{% if fields %} class="bg-success"{% endif %}><a href="{{url}}" title="Parse {{scheme}} annotations">{{scheme}}</a></dt><dd>{% if fields %}<ul>{% for field, count in fields %}<li>{{field}}: {{count}}</li>{% endfor %}</ul>{% else %}&mdash;{% endif %}</dd>
+	<dt{% if fields %} class="bg-success"{% endif %}><a href="{{url}}" title="Parse {{scheme}} annotations">{{scheme}}</a></dt><dd>{% if fields %}<ul>{% for field, count, props in fields %}<li>{{field}}: {{count}} {% for prop in props %}<code>{{prop}}</code>{% if not forloop.last %}; {% endif %}{% endfor %}</li>{% endfor %}</ul>{% else %}&mdash;{% endif %}</dd>
 	{% endfor %}
 </dl>
 
