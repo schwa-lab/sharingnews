@@ -1,9 +1,12 @@
 {% extends "layout.html" %}
+{% block header %}
+<nav><ol class="breadcrumb">{% for crumb in breadcrumbs %}<li><a href="{% if crumb %}{% url 'collection' sig=crumb %}{% else %}{% url 'collection' %}{% endif %}">{% if crumb %}{{crumb}}{% else %}All domains{% endif %}</a></li>{% endfor %}</ol></nav>
+{% endblock %}
 {% block content %}
-<h2>Record</h2>
+<h2>Article record</h2>
 <dl class="dl-horizontal">
-    {% if article.title %}<dt>Title as shown in FB share</dt><dd>{{article.title}}</dd>{% endif %}
-    {% if article.description %}<dt>Description as shown in FB share</dt><dd>{{article.description}}</dd>{% endif %}
+    {% if article.title %}<dt>Title from FB</dt><dd>{{article.title}}</dd>{% endif %}
+    {% if article.description %}<dt>Description from FB</dt><dd>{{article.description}}</dd>{% endif %}
     {% if article.fb_created %}<dt>FB created</dt><dd>{{article.fb_created}}</dd>{% endif %}
     {% if article.fb_type %}<dt>FB type</dt><dd>{{article.fb_type}}</dd>{% endif %}
     <dt>URL</dt><dd><a href="{{article.url|iriencode}}">{{article.url}}</a></dd>
@@ -13,7 +16,7 @@
     <dt>FB total shares</dt><dd>{{article.total_shares}} (Updated {{article.fb_updated}})</dd>
 	{% if article.fetch_status %}
 	<dt>Fetch HTTP status</dt><dd>{{article.fetch_status}}</dd>
-	<dt>In extractor development sample</dt><dd>{{article.downloaded.in_dev_sample}}</dd>
+	<dt>In development sample</dt><dd>{{article.downloaded.in_dev_sample}}</dd>
 	{% endif %}
 </dl>
 

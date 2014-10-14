@@ -16,6 +16,7 @@ def article(request, id):
     article = get_object_or_404(Article, id=id)
     return render_to_response('article.html',
                               {'article': article,
+                               'breadcrumbs': [None, article.url_signature.base_domain, article.url_signature.signature],
                                'extracted_fields': DownloadedArticle.EXTRACTED_FIELDS},
                               context_instance=RequestContext(request))
 
