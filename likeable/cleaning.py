@@ -144,6 +144,10 @@ def url_as_diff(new, old):
     return out
 
 
+SCRIPT_STYLE_RE = re.compile(r'<(script|style)\b.*?</\1>', re.DOTALL)
+WHITESPACE_RE = re.compile(r'[ \t]*(\n)[ \t]*(\n?)\s*', re.DOTALL)
+
+
 def compress_html(html):
     """
     >>> compress_html('foo<script hello=world>foo </script>bar')
@@ -161,9 +165,9 @@ def compress_html(html):
     """
     # remove <script/>, <style/>:
     # XXX: it's possible for </...> to appear inside a script or a textarea or an attr
-    html = re.sub(r'<(script|style)\b.*?</\1>', '', html)
+    html = re.sub(SCRIPT_STYLE_RE, '', html)
     # remove comments (but these may be useful)
     ### html = re.sub(r'<!--.*?-->', '', html)
     # remove excess whitespace
-    html = re.sub(r'[ \t]*(\n)[ \t]*(\n?)\s*', r'\1\2', html).strip()
+    html = re.sub(WHITESPACE_RE, r'\1\2', html).strip()
     return html
