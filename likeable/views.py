@@ -1,15 +1,17 @@
 from __future__ import division, absolute_import, print_function
 import datetime
 from collections import defaultdict
+import re
 
 from jsonview.decorators import json_view
 from django.shortcuts import render_to_response, redirect, get_object_or_404
-from django.http import Http404, HttpResponseBadRequest
+from django.http import Http404, HttpResponseBadRequest, HttpResponse
 from django.template import RequestContext
 from django.core.urlresolvers import reverse
 
 from .models import SpideredUrl, Article, DownloadedArticle, UrlSignature
 from .scraping import extract
+from .cleaning import compress_html
 
 
 def article(request, id):
@@ -19,6 +21,48 @@ def article(request, id):
                                'breadcrumbs': [None, article.url_signature.base_domain, article.url_signature.signature],
                                'extracted_fields': DownloadedArticle.EXTRACTED_FIELDS},
                               context_instance=RequestContext(request))
+
+
+def article_raw(request, id):
+    downloaded = get_object_or_404(DownloadedArticle, article_id=id)
+    html = compress_html(downloaded.html)
+    style = request.GET.get('style')
+    if style in ('none', 'selector'):
+        html = re.sub(r'(?i)<link[^>]*\brel=(["\']?)stylesheet[^>]*>', '', html)
+    if style == 'selector':
+        SELECTOR_CONTENT = '''
+        <style type="text/css">
+        * {
+          border: 1px solid #eee !important;
+          cursor: crosshair !important;
+        }
+        *:hover {
+          border: 1px solid red !important;
+        }
+        </style>
+        <script type="text/javascript">
+        function compileSelector(node) {
+          if (!node)
+            return '';
+          var classes = node.className.split(/\s+/);
+          classes = classes.filter(function(s){return s;})
+          var id = node.getAttribute('id');
+          var prefix = node.parentElement ? compileSelector(node.parentElement) + ' > ' : '';
+          return prefix + node.tagName + (classes.length ? '.' + classes.join('.') : '') + (id ? '#id' : '');
+        }
+
+        document.addEventListener('click', function(evt) {
+          alert(compileSelector(evt.target));
+        }, false);
+        </script>
+        '''
+        match = re.search('(?i)</head>', html)
+        if match is not None:
+            ins = match.start()
+        else:
+            ins = html.index('>') + 1
+        html = html[:ins] + SELECTOR_CONTENT + html[ins:]
+    return HttpResponse(html)
 
 
 def _article_by_spidered_url(**kwargs):

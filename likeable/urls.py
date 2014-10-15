@@ -7,6 +7,7 @@ MONTH_PATTERN = '201[0-9](?:[01][0-9])?'
 
 urlpatterns = patterns('',
     url(r'^article/(?P<id>[0-9]+)$', 'likeable.views.article', name='article'),
+    url(r'^article/(?P<id>[0-9]+)/raw$', 'likeable.views.article_raw', name='article_raw'),
     url(r'^article/sw/(?P<swid>[0-9]+)$', 'likeable.views.article_by_swid', name='article_by_swid'),  # problematic given deduplication
     url(r'^article/url/(.+)$', 'likeable.views.article_by_url', name='article_by_url'),
     url(r'^/?$', 'likeable.views.collection', name='collection'),

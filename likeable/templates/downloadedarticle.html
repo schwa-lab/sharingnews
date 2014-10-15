@@ -1,4 +1,10 @@
 {% load getattr %}
+<h2>Downloaded content</h2>
+<ul>
+	<li><a href="{% url 'article_raw' article.id %}">View fetched</a></li>
+	<li><a href="{% url 'article_raw' article.id %}?style=none">View unstyled</a></li>
+	<li><a href="{% url 'article_raw' article.id %}?style=selector">View with CSS selectors</a></li>
+</ul>
 <h2>Extracted fields</h2>
 <dl class="dl-horizontal">
 {% for field in extracted_fields %}
