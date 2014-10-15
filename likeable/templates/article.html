@@ -27,7 +27,7 @@
 {% endfor %}
 </ul>
 
-{% if article.fetch_status %}
+{% if article.fetch_status == 200 %}
 {% include "downloadedarticle.html" %}
 {% endif %}
 

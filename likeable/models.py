@@ -4,6 +4,7 @@ import re
 import logging
 import datetime
 import pytz
+import urllib
 
 from lxml import etree
 from readability import readability
@@ -107,7 +108,7 @@ class ArticleQS(models.query.QuerySet):
     def bin_shares(self, bin_max, field_name='binned_shares', shares_field='total_shares'):
         cases = ' '.join('WHEN {} <= {} THEN {}'.format(shares_field, int(m), i)
                          for i, m in enumerate(bin_max))
-        return self.extra(select={field_name: 'CASE {} ELSE {} END'.format(cases, len(bin_max))})
+        return self.filter(total_shares__isnull=False).extra(select={field_name: 'CASE {} ELSE {} END'.format(cases, len(bin_max))})
 
     def annotate_stats(self, field='total_shares'):
         return self.annotate(count=models.Count('pk'),
@@ -208,6 +209,38 @@ class DownloadedArticle(models.Model):
     @property
     def meta_fields(self):
         return sorted(self._get_meta_fields())
+
+    SEMANTIC_ANNOTATION_SCHEMES = [
+        ('rdfa', 'http://www.w3.org/2012/pyRdfa/extract?uri={}&format=json&rdfagraph=output&vocab_expansion=false&rdfa_lite=false&embedded_rdf=true&space_preserve=true&vocab_cache=true&vocab_cache_report=false&vocab_cache_refresh=false', [
+            ('property', etree.XPath('//*[@property]/@property')),
+            ('datatype', etree.XPath('//*[@property and @datatype]/@property')),
+            ('no content', etree.XPath('//*[@property and not(@content)]/@property')),
+        ]),
+        ('microdata', 'http://rdf.greggkellogg.net/distiller?format=jsonld&in_fmt=microdata&uri={}', [
+            ('itemprop', etree.XPath('//*[@itemprop]/@itemprop')),
+            ('datetime', etree.XPath('//*[@itemprop and @datetime]/@itemprop')),
+        ]),
+        ('hNews microformat', 'https://mf2py.herokuapp.com/parse?url={}', [
+            ('hentry', etree.XPath("//*[@class and contains(concat(' ', normalize-space(@class), ' '), ' hentry ')]")),
+            ('dateline', etree.XPath("//*[@class and contains(concat(' ', normalize-space(@class), ' '), ' hentry ')]/descendant-or-self::*[@class and contains(concat(' ', normalize-space(@class), ' '), ' dateline ')]")),
+        ])
+    ]
+
+    def sniff_semantic_annotation(self):
+        parsed = self.parsed_html
+        for scheme, url_fmt, matchers in self.SEMANTIC_ANNOTATION_SCHEMES:
+            results = []
+            for field, matcher in matchers:
+                matches = matcher(parsed)
+                if matches:
+                    if not hasattr(matches[0], 'tag'):
+                        values = sorted(set(map(unicode, matches)))
+                    else:
+                        values = None
+                if matches:
+                    results.append((field, len(matches), values))
+            url = url_fmt.replace('{}', urllib.quote(self.article.url))
+            yield scheme, url, results
 
     @property
     def pyreadability(self):
