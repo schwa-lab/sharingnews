@@ -54,7 +54,7 @@ class Fetcher(object):
     def fetch_comma(self, urls, _depth=1):
         self._pre()
         try:
-            resp = requests.get('https://graph.facebook.com/v2.1?access_token={}&ids={}'.format(FB_API_TOKEN, ','.join(urllib.quote(url) for url in urls)),
+            resp = requests.get('https://graph.facebook.com/v2.2?access_token={}&ids={}'.format(FB_API_TOKEN, ','.join(urllib.quote(url) for url in urls)),
                                 params=self.params, timeout=30)
         except (requests.Timeout, requests.ConnectionError) as e:
             code = -1
@@ -95,7 +95,7 @@ class Fetcher(object):
         batch = '[{}]'.format(','.join(self.BATCH_FMT % json.dumps(url)
                                        for url in urls))
         try:
-            resp = requests.post('https://graph.facebook.com/v2.1',
+            resp = requests.post('https://graph.facebook.com/v2.2',
                                  data={'access_token': FB_API_TOKEN,
                                        'include_headers': 'false',
                                        'batch': batch},
