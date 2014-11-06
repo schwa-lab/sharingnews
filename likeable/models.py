@@ -141,7 +141,7 @@ class Article(models.Model):
     fb_has_title = models.BooleanField(default=False, db_index=True)  # for easy indexing
     title = models.CharField(max_length=1000, null=True)  # taken from Facebook scrape
     description = models.TextField(null=True)
-    total_shares = models.PositiveIntegerField(null=True)  # tmp
+    total_shares = models.PositiveIntegerField(null=True, db_index=True)  # tmp
 
     fetch_status = models.IntegerField(null=True)
     # fetch_when = models.DateTimeField(null=True)
