@@ -96,6 +96,8 @@ $(document).ready(function() {
           },
           'json').always(function (){
             $('#seltest').prop('disabled', false);
+          }).fail(function (response) {
+            alert('Error evaluating selector: ' + JSON.parse(response.responseText).message);
           });
     return false;
   });
