@@ -84,7 +84,7 @@ def get_mime(resp):
 def _node_text(node, _extractor=etree.XPath('.//text() | .//br')):
     if not hasattr(node, 'tag'):
         return unicode(node)
-    return u' '.join(unicode(el).replace(u'\n', u'').replace(u'\r', u'') if not hasattr(el, 'tag') else u'\n'
+    return u''.join(unicode(el).replace(u'\n', u'').replace(u'\r', u'') if not hasattr(el, 'tag') else u'\n'
                      for el in _extractor(node))
 
 
