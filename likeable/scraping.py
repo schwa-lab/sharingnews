@@ -88,14 +88,43 @@ def _node_text(node, _extractor=etree.XPath('.//text() | .//br')):
                      for el in _extractor(node))
 
 
+def readability_summarise_tree(tree):
+    import readability
+    doc = readability.Document(etree.tounicode(tree))
+    summ = doc.summary()
+    return etree.fromstring(summ, parser=etree.HTMLParser())
+
+
+TEXT_CODE = '((text))'
+READABILITY_SUMMARY_CODE = '((readability.summary))'
+XPATH_CODE = '((xpath))'
+
+
 @lru_cache(maxsize=256)
 def _get_extractor(selector):
-    if not selector:
+    if not selector.strip():
         return None, False
-    is_text = selector.startswith('((text))')
+    preprocessor = None
+    is_text = selector.startswith(TEXT_CODE)
     if is_text:
-        selector = selector[8:]
-    return etree.XPath(css_to_xpath(selector)), is_text
+        selector = selector[len(TEXT_CODE):].strip()
+    if selector.startswith(READABILITY_SUMMARY_CODE):
+        selector = selector[len(READABILITY_SUMMARY_CODE):].strip()
+        preprocessor = readability_summarise_tree
+
+    if not selector:
+        # Applies in special case due to control codes
+        xpath = lambda node: node
+    elif selector.startswith(XPATH_CODE):
+        xpath = etree.XPath(selector[len(XPATH_CODE):])
+    else:
+        xpath = etree.XPath(css_to_xpath(selector))
+
+    if preprocessor:
+        extractor = lambda doc: xpath(preprocessor(doc))
+    else:
+        extractor = xpath
+    return extractor, is_text
 
 
 def extract(selector, doc, as_unicode=False):

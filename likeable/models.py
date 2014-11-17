@@ -48,13 +48,15 @@ _empty_doc = etree.fromstring('<x></x>')
 
 
 class UrlSignature(models.Model):
+    DEFAULT_BODY_TEXT_SELECTOR = '((text))((readability.summary))p'
+
     objects = UrlSignatureManager()
     signature = models.CharField(max_length=256, unique=True, db_index=True)  # not sure if it's a good idea to use this as a string primary key. would make SpideredUrl big.
     base_domain = models.CharField(max_length=50, db_index=True)  # oversized due to broken data :(
 
     modified_when = models.DateTimeField(default=utcnow)  # selectors modified at this timestamp
     body_html_selector = models.CharField(max_length=1000, null=True)
-    body_text_selector = models.CharField(max_length=1000, null=True)
+    body_text_selector = models.CharField(max_length=1000, null=True, default=DEFAULT_BODY_TEXT_SELECTOR)
     headline_selector = models.CharField(max_length=1000, null=True)
     dateline_selector = models.CharField(max_length=1000, null=True)
     byline_selector = models.CharField(max_length=1000, null=True)
