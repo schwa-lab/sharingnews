@@ -125,7 +125,7 @@ $(document).ready(function() {
     }
     var table = $('<table id="copy-selector-table" class="table table-striped" />').insertAfter(this).DataTable({
       // TODO: set field dynamically
-      ajax: "{% url 'prior_extractors' field='body_text' sig=params.sig %}",
+      ajax: "{% url 'prior_extractors' field=params.field sig=params.sig %}",
       order: [[ 3, "desc" ], [1, "desc"]],
       // XXX: there must be a nicer way to do this!?
       rowCallback: function(row, data) {
