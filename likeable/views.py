@@ -2,6 +2,7 @@ from __future__ import division, absolute_import, print_function
 import datetime
 from collections import defaultdict
 import re
+from xml.sax.saxutils import escape as xml_escape
 
 from jsonview.decorators import json_view
 from django.shortcuts import render_to_response, redirect, get_object_or_404
@@ -240,7 +241,10 @@ def extractor_eval(request, sig):
 
 @json_view
 def prior_extractors(request, field, sig):
-    """Get frequency of selectors previously saved"""
+    """Get frequency of selectors previously saved
+
+    Note: values are HTML-escaped thanks to datatables
+    """
     signature = get_object_or_404(UrlSignature, signature=sig)
     signatures = UrlSignature.objects.exclude(id=signature.id)
     field += '_selector'
@@ -259,6 +263,10 @@ def prior_extractors(request, field, sig):
         entry['domain'] = domain_mapping[sel]
         entry['domain_example'] = signatures.filter(**{'base_domain': signature.base_domain,
                                                        field: sel})[0].signature
+
+        for k, v in entry.items():
+            if isinstance(v, (str, unicode)):
+                entry[k] = xml_escape(v)
 
     # TODO: match path but possibly different domain
 
