@@ -139,4 +139,4 @@ def extract(selector, doc, as_unicode=False):
                        for el in extractions]
         if as_unicode == 'join':
             extractions = '\n'.join(extractions)
-    return extractions
+    return extractions.strip()
