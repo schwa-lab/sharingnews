@@ -176,7 +176,7 @@ def collection(request, sig=None, period=None, start=None, end=None):
 
 
 def get_extractor(request, signature, field):
-    selector = request.GET.get('selector') or getattr(signature, field + '_selector') or ''
+    selector = request.GET.get('selector') or signature.get_selector(field) or ''
     eval_on_load = request.GET.get('autoeval')
     articles = signature.article_set
     dev_sample = articles.filter(downloaded__in_dev_sample=True)

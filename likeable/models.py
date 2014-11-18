@@ -12,7 +12,7 @@ from django.db import models
 from django.core.urlresolvers import reverse
 
 from .cleaning import xml_unescape
-from .scraping import extract
+from .scraping import extract, DEFAULT_CODE
 
 logger = logging.getLogger(__name__)
 
@@ -37,9 +37,8 @@ class UrlSignatureManager(models.Manager):
 
 
 def _make_extractor(field):
-    attr = field + '_selector'
     def _extractor(self, doc, as_unicode=False):
-        return extract(getattr(self, attr), doc, as_unicode)
+        return extract(self.get_selector(field), doc, as_unicode)
     _extractor.__name__ = 'extract_' + field
     return _extractor
 
@@ -47,20 +46,48 @@ def _make_extractor(field):
 _empty_doc = etree.fromstring('<x></x>')
 
 
-class UrlSignature(models.Model):
-    DEFAULT_BODY_TEXT_SELECTOR = '((text))((readability.summary))p'
+EXTRACTED_FIELDS = ['headline', 'dateline', 'byline', 'body_text', 'body_html']
 
+class UrlSignature(models.Model):
     objects = UrlSignatureManager()
     signature = models.CharField(max_length=256, unique=True, db_index=True)  # not sure if it's a good idea to use this as a string primary key. would make SpideredUrl big.
     base_domain = models.CharField(max_length=50, db_index=True)  # oversized due to broken data :(
 
     modified_when = models.DateTimeField(default=utcnow)  # selectors modified at this timestamp
-    body_html_selector = models.CharField(max_length=1000, null=True)
-    body_text_selector = models.CharField(max_length=1000, null=True, default=DEFAULT_BODY_TEXT_SELECTOR)
-    headline_selector = models.CharField(max_length=1000, null=True)
-    dateline_selector = models.CharField(max_length=1000, null=True)
-    byline_selector = models.CharField(max_length=1000, null=True)
-    media_selector = models.CharField(max_length=1000, null=True)
+
+    # When updating defaults, run makemigrations, and 
+    DEFAULT_SELECTORS = {
+        'headline': DEFAULT_CODE + '((text))[itemprop~="headline"]; ((text))h1; [property~="og:title"]::attr(content)',
+        'body_text': DEFAULT_CODE + '((text))((readability.summary))p',
+        # there are more variations of the following that could be generated e.g. content attr, text content (worth the cost for non-ISO?)
+        'dateline': DEFAULT_CODE + '[property~=datePublished]::attr(datetime); [property~=dateCreated]::attr(datetime); [itemprop~=datePublished]::attr(datetime); [itemprop~=dateCreated]::attr(datetime)',
+        #'body_html': DEFAULT_CODE + '((readability.summary))',
+    }
+
+    body_html_selector = models.CharField(max_length=1000, null=True,
+                                          default=DEFAULT_SELECTORS.get('body_html'))
+    body_text_selector = models.CharField(max_length=1000, null=True,
+                                          default=DEFAULT_SELECTORS.get('body_text'))
+    headline_selector = models.CharField(max_length=1000, null=True,
+                                         default=DEFAULT_SELECTORS.get('headline'))
+    dateline_selector = models.CharField(max_length=1000, null=True,
+                                         default=DEFAULT_SELECTORS.get('dateline'))
+    byline_selector = models.CharField(max_length=1000, null=True,
+                                       default=DEFAULT_SELECTORS.get('byline'))
+    media_selector = models.CharField(max_length=1000, null=True,
+                                      default=DEFAULT_SELECTORS.get('media'))
+
+    def get_selector(self, field):
+        return getattr(self, field + '_selector')
+
+    def update_defaults(self):
+        updated = []
+        for field in EXTRACTED_FIELDS:
+            cur_sel = self.get_selector(field)
+            if cur_sel is None or cur_sel.startswith(DEFAULT_CODE):
+                if self.set_selector(field, self.DEFAULT_SELECTORS.get(field)):
+                    updated.append(field)
+        return updated
 
     def set_selector(self, field, value):
         if not value:
@@ -93,7 +120,6 @@ class UrlSignature(models.Model):
                        kwargs={'sig': self.signature,
                                'start': '',
                                'end': ''})
-
 
 
 class ArticleQS(models.query.QuerySet):
@@ -188,7 +214,7 @@ class DownloadedArticle(models.Model):
     scrape_when = models.DateTimeField(null=True)  # set to signature's modified_when, not scrape time
     canonical_url = models.TextField(null=True)
 
-    EXTRACTED_FIELDS = ['headline', 'dateline', 'byline', 'body_text', 'body_html']
+    EXTRACTED_FIELDS = EXTRACTED_FIELDS
     headline = models.TextField(null=True)
     dateline = models.TextField(null=True)
     byline = models.TextField(null=True)

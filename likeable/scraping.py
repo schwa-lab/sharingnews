@@ -29,6 +29,7 @@ class FetchException(Exception):
 
 
 def fetch_with_refresh(url, accept_encodings=HTTP_ENCODINGS, max_delay=20):
+    print(url)
     try:
         hops = []
         refresh = True
@@ -49,6 +50,7 @@ def fetch_with_refresh(url, accept_encodings=HTTP_ENCODINGS, max_delay=20):
                 except AttributeError:
                     pass
                 continue
+            print('>', response)
             hops.extend(response.history)
             hops.append(response)
             if response.status_code >= 400:
@@ -85,7 +87,7 @@ def _node_text(node, _extractor=etree.XPath('.//text() | .//br')):
     if not hasattr(node, 'tag'):
         return unicode(node)
     return u''.join(unicode(el).replace(u'\n', u'').replace(u'\r', u'') if not hasattr(el, 'tag') else u'\n'
-                     for el in _extractor(node))
+                    for el in _extractor(node)).strip()
 
 
 def readability_summarise_tree(tree):
@@ -95,12 +97,13 @@ def readability_summarise_tree(tree):
     return etree.fromstring(summ, parser=etree.HTMLParser())
 
 
+DEFAULT_CODE = '<default>'
 TEXT_CODE = '((text))'
 READABILITY_SUMMARY_CODE = '((readability.summary))'
 XPATH_CODE = '((xpath))'
 
 
-@lru_cache(maxsize=256)
+@lru_cache(maxsize=512)
 def _get_extractor(selector):
     if not selector.strip():
         return None, False
@@ -128,15 +131,25 @@ def _get_extractor(selector):
 
 
 def extract(selector, doc, as_unicode=False):
-    extractor, is_text = _get_extractor(selector)
-    if extractor is None:
-        return None
-    extractions = extractor(doc)
-    if is_text:
-        extractions = [_node_text(el) for el in extractions]
-    if as_unicode:
-        extractions = [etree.tounicode(el) if hasattr(el, 'tag') else unicode(el)
-                       for el in extractions]
-        if as_unicode == 'join':
-            extractions = '\n'.join(extractions)
-    return extractions.strip()
+    extractions = None
+    if not selector:
+        return
+    if selector.startswith(DEFAULT_CODE):
+        selector = selector[len(DEFAULT_CODE):].strip()
+    for selector in selector.split(';'):  # TODO: handle semicolon in string
+        extractor, is_text = _get_extractor(selector.strip())
+        if extractor is None:
+            return None
+        extractions = extractor(doc)
+        if is_text:
+            extractions = [_node_text(el) for el in extractions]
+        if as_unicode:
+            extractions = [etree.tounicode(el) if hasattr(el, 'tag') else unicode(el)
+                           for el in extractions]
+            if as_unicode == 'join':
+                extractions = '\n'.join(extractions)
+                if not extractions.strip():
+                    extractions = None
+        if extractions:
+            break
+    return extractions
