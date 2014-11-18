@@ -73,7 +73,7 @@ def strip_subdomains(domain):
     return out
 
 CANONICAL_TAG_RE = re.compile(r'(?i)<link\b[^>]*\brel=.canonical[^>]*')
-CANONICAL_URL_RE = re.compile(r'(?<=\bhref=["\']).*?(?=["\'])')
+CANONICAL_URL_RE = re.compile(r'(?<=\bhref=["\']).*?(?=["\'])|(?<=\bhref=)h.*?(?=[ >])')
 
 
 def extract_canonical(html, relative_to=None):
