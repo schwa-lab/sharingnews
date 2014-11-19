@@ -1,11 +1,11 @@
-
 from __future__ import print_function, absolute_import, division
 import re
 import logging
 import datetime
-import pytz
 import urllib
+from collections import Counter, defaultdict
 
+import pytz
 from lxml import etree
 from readability import readability
 from django.db import models
@@ -55,7 +55,7 @@ class UrlSignature(models.Model):
 
     modified_when = models.DateTimeField(default=utcnow)  # selectors modified at this timestamp
 
-    # When updating defaults, run makemigrations, and 
+    # When updating defaults, run makemigrations, and scripts/reextract-defaults.py
     DEFAULT_SELECTORS = {
         'headline': DEFAULT_CODE + '((text))[itemprop~="headline"]; ((text))h1; [property~="og:title"]::attr(content)',
         'body_text': DEFAULT_CODE + '((text))((readability.summary))p',
@@ -147,8 +147,9 @@ class ArticleQS(models.query.QuerySet):
     def domain_frequencies(self):
         return self.values_list('url_signature__base_domain').annotate(count=models.Count('pk')).order_by('-count')
 
-    def signature_frequencies(self):
-        return self.values_list('url_signature__signature').annotate(count=models.Count('pk')).order_by('-count')
+    def signature_frequencies(self, return_id=False):
+        field = 'url_signature__signature' if not return_id else 'url_signature'
+        return self.values_list(field).annotate(count=models.Count('pk')).order_by('-count')
 
 
 class ArticleManager(models.Manager):
@@ -203,12 +204,68 @@ class Article(models.Model):
             ('total_shares', 'url_signature'),
         ]
 
+ISO_DATE_RE = ('^[12][0-9]{3}'
+               '-?[01][0-9]'
+               '-?[0-3][0-9]'
+               '([T ]?[0-2][0-9]'
+                   '([.,][0-9]+'
+                       '|:?[0-5][0-9]'
+                       '([.,][0-9]+'
+                           '|:?[0-5][0-9]'
+                           '([.,][0-9]+)?'
+                       ')?'
+                   ')'
+                   '(Z'
+                   '|[+-][01][0-9](:?[0-5][0-9])?)?'
+               ')?$')
+assert re.search(ISO_DATE_RE, '2001-05-01')
+assert re.search(ISO_DATE_RE, '20010501')
+assert re.search(ISO_DATE_RE, '1998-05-01T19:30Z')
+assert re.search(ISO_DATE_RE, '1998-05-01T19.5Z')
+assert re.search(ISO_DATE_RE, '1998-05-01T19:00:45.123Z')
+assert re.search(ISO_DATE_RE, '1998-05-01T1900+10')
+assert re.search(ISO_DATE_RE, '1998-05-01T1900+10:30')
+assert re.search(ISO_DATE_RE, '1998-05-01T1900-10:30')
+assert re.search(ISO_DATE_RE, '19980501T1900Z')
+assert re.search(ISO_DATE_RE, '19980501T1900')
+assert re.search(ISO_DATE_RE, '199805011900Z')
+# TODO: negative instances?
+
+
+class DownloadedArticleQS(models.query.QuerySet):
+    def add_diagnostics(self, values=False):
+        fmt = '("{}" {} \'{}\')::int'.format
+        select = {}
+        for field in DownloadedArticle.EXTRACTED_FIELDS:
+            # XXX: don't forget nulls when aggregating
+            select[field + '_has_value'] = '("{}" is not null)::int'.format(field)
+            select[field + '_has_markup'] = fmt(field, '~', '.*<.+>.*')
+            select[field + '_has_newline'] = fmt(field, '~', r'.*\n.*')
+            select[field + '_has_emptyline'] = fmt(field, '~', r'.*\n\n.*')
+            select[field + '_has_loosepunc'] = fmt(field, '~', r'.*\s[^[:alnum:]_-]\s.*')
+
+        select['dateline_has_noniso'] = fmt(field, '!~', ISO_DATE_RE)
+        q = self.extra(select=select)
+        if values:
+            keys = select.keys()
+            if hasattr(values, '__iter__'):
+                keys = list(keys) + list(values)
+            q = q.values(*keys)
+        return q
+
+
+class DownloadedArticleManager(models.Manager):
+    def get_queryset(self):
+        return DownloadedArticleQS(self.model)
+
 
 class DownloadedArticle(models.Model):
+    objects = DownloadedArticleManager()
+
     article = models.OneToOneField(Article, primary_key=True, related_name='downloaded')
 
     ### From our extraction
-    in_dev_sample = models.BooleanField(default=False)
+    in_dev_sample = models.BooleanField(default=False, db_index=True)
     html = models.TextField()  # fetched HTML content normed to UTF-8, with some lossy compression
     fetch_when = models.DateTimeField(null=True)
     scrape_when = models.DateTimeField(null=True)  # set to signature's modified_when, not scrape time
@@ -287,6 +344,29 @@ class DownloadedArticle(models.Model):
         html = re.sub('(?i)^([^>]*) encoding=[^> ]*', r'\1', self.html)
         return etree.fromstring(html, parser=etree.HTMLParser(),
                                 base_url=self.article.url)
+
+
+def dev_sample_diagnostics():
+    sig_counters = defaultdict(Counter)
+    sig_n_dev = Counter()
+
+    for data in DownloadedArticle.objects.filter(in_dev_sample=True).add_diagnostics(values=['article__url_signature']):
+        sig_id = data.pop('article__url_signature')
+        sig_counters[sig_id].update(k for k, v in data.iteritems() if v)
+        sig_n_dev[sig_id] += 1
+
+    no_dev_sample = []
+    signatures = {sig.id: sig for sig in UrlSignature.objects.filter(id__in=sig_n_dev)}
+    for sig_id, count in Article.objects.all().signature_frequencies(return_id=True):
+        if sig_id not in sig_counters:
+            no_dev_sample.append(sig_id)
+            continue
+        counter = sig_counters[sig_id]
+        nested = defaultdict(dict)
+        for k, v in counter.iteritems():
+            field, criterion = k.split('_has_')
+            nested[field][criterion] = v
+        yield signatures[sig_id], count, sig_n_dev[sig_id], nested
 
 
 class FacebookStat(object):
