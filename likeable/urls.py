@@ -16,6 +16,7 @@ urlpatterns = patterns('',
 
     url(r'^extractor/(?P<field>\w+)/(?P<sig>.+)', 'likeable.views.extractor', name='extractor'),
     url(r'^extractor-eval/(?P<sig>.+)', 'likeable.views.extractor_eval', name='extractor_eval'),
+    url(r'^extractor-report', 'likeable.views.extractor_report', name='extractor_report'),
     url(r'^prior-extractors/(?P<field>[a-z_0-9]+)/(?P<sig>.+)', 'likeable.views.prior_extractors', name='prior_extractors'),
 
     url(r'^admin/', include(admin.site.urls)),

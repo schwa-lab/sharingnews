@@ -10,7 +10,7 @@ from django.http import Http404, HttpResponseBadRequest, HttpResponse
 from django.template import RequestContext
 from django.core.urlresolvers import reverse
 
-from .models import SpideredUrl, Article, DownloadedArticle, UrlSignature
+from .models import SpideredUrl, Article, DownloadedArticle, UrlSignature, dev_sample_diagnostics
 from .scraping import extract
 from .cleaning import compress_html
 
@@ -271,3 +271,21 @@ def prior_extractors(request, field, sig):
     # TODO: match path but possibly different domain
 
     return {'data': results}
+
+
+def extractor_report(request):
+    min_n_articles = int(request.GET.get('min_n_articles', 100))
+    min_n_dev = int(request.GET.get('min_n_dev', 5))
+    print(repr((min_n_articles, min_n_dev)))
+    def get_rows():
+        for sig, n_articles, n_dev, diagnostics in dev_sample_diagnostics():
+            if n_articles < min_n_articles:
+                continue
+            if n_dev < min_n_dev:
+                continue
+            for field in DownloadedArticle.EXTRACTED_FIELDS:
+                yield sig, n_articles, n_dev, field, sig.get_selector(field), {k: v / n_dev * 100 for k, v in diagnostics[field].iteritems()}
+    return render_to_response('extractor-report.html',
+                              {'columns': DownloadedArticle.DIAGNOSTIC_EXTRAS,
+                               'rows': get_rows()},
+                              context_instance=RequestContext(request))

@@ -1,0 +1,188 @@
+{% extends "layout.html" %}
+{% load getattr %}
+{% block content %}
+<h1>Extractor development report</h1>
+
+<style type="text/css">
+div.FixedHeader_Cloned th,
+div.FixedHeader_Cloned td {
+    background-color: #eee !important;
+}
+thead {
+    border-bottom: thin solid;
+    border-top: medium solid;
+}
+thead th {
+    padding: .2em 0;
+}
+tbody {
+    border-bottom: medium solid;
+}
+#report > colgroup > col.even {
+    background: rgba(0,0,200,0.1);
+}
+#report > tbody > tr.even {
+    background: rgba(200,200,0,0.1);
+}
+#report td.numeric {
+    text-align: right;
+}
+#report td.longtext {
+    max-width: 15em;
+    max-height: 1em;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+#report td.longtext:hover {
+    max-height: none;
+    white-space: inherit;
+    text-overflow: visible;
+    overflow: visible;
+}
+td {
+    padding: 0 .3em;
+}
+tr.search td {
+    padding: 0.2em 1em;
+}
+.ttfont {
+    font-family: monospace;
+}
+thead input {
+    width: 100%;
+    font-size: smaller;
+}
+/*thead .range {
+    background: transparent;
+    border: none;
+    font-size: small;
+}*/
+</style>
+
+<table id="report" class="display">
+    <colgroup>
+    <col class="odd" />
+    <col class="even numeric"/>
+    <col class="odd numeric"/>
+    <col class="even"/>
+    <col class="odd"/>
+    {% for col in columns %}
+    <col class="numeric {% if forloop.counter|divisibleby:2 %}odd{% else %}even{% endif %}"/>
+    {% endfor %}
+    </colgroup>
+<thead>
+    <tr>
+        <th>Signature</th>
+        <!--<th>Base domain</th>-->
+        <th>#articles</th>
+        <th>#dev</th>
+        <th>Field</th>
+        <th>Selector</th>
+        {% for col in columns %}
+        <th>{{col.name}}%</th>
+        {% endfor %}
+    </tr>
+    <tr class="search">
+    <td><input class="search" placeholder="Signature (regexp search)"></td>
+    <!--<td>Base domain</td>-->
+    <td></td>
+    <td></td>
+    <td><input class="search" placeholder="Field (regexp search)"></td>
+    <td><input class="search" placeholder="Selector (regexp search)"></td>
+    {% for col in columns %}
+    <td></td>
+    {% endfor %}
+    </tr>
+</thead>
+<tbody>
+{% for sig, n_articles, n_dev, field, sel, diagnostics in rows %}
+    <tr>
+        <td><a href="{% url 'collection' sig=sig.signature %}">{{sig.signature}}</a></td>
+        <!--<td><a herf="{% url 'collection' sig=sig.base_domain %}">{{sig.base_domain}}</a></td>-->
+        <td>{{n_articles}}</td>
+        <td>{{n_dev}}</td>
+        <td><a href="{% url 'extractor' field=field sig=sig.signature %}?autoeval=true">{{field}}</a></td>
+        <td>{% if sel %}{{sel}}{% endif %}</a></td>
+        {% for col in columns %}
+        <td>{% with diagnostics|getattr:col.name as val %}{% if val %}{{ val|floatformat:0 }}{% endif %}{% endwith %}</td>
+        {% endfor %}
+    </tr>
+{% endfor %}
+</tbody>
+</table>
+
+<script>
+$(document).ready(function() {
+    var table = $('#report').DataTable({
+        order: [[1, 'desc'], [3, 'asc']],
+        orderCellsTop: true,
+        columns: [
+            {className: 'longtext'},
+            {className: 'numeric'},
+            {className: 'numeric'},
+            {},
+            {className: 'longtext'},
+            {% for col in columns %}
+            {className: 'numeric'},
+            {% endfor %}
+        ],
+        /*autoWidth: false,*/
+        lengthChange: true,
+        lengthMenu: [[ 10, 50, 100, 250, -1 ], [ 10, 50, 100, 250, "All" ]],
+        processing: true,
+        pageLength: 50,
+    });
+    fh = new $.fn.dataTable.FixedHeader(table, {
+    });
+    table.columns().eq(0).each(function (colIdx) {
+        var cell = $('.FixedHeader_Cloned thead tr:nth-child(2) td:nth-child('+ (colIdx + 1) +')')[0];
+        var bodyCell = $('#report tbody tr:nth-child(1) td:nth-child('+ (colIdx + 1) +')')[0];
+        if ($(bodyCell).hasClass('numeric')) {
+            $('<div class="slider"></div>' //<p><input class="range" readonly></p>'
+             ).appendTo(cell);
+            var colData = table.column(colIdx).data();
+            var lo = Math.min.apply(Math, colData);
+            var hi = Math.max.apply(Math, colData);
+            var cur = {};
+            var setTooltip = function(i, text) {
+                $('.slider .ui-slider-handle:nth-of-type(' + i + ')', cell).tooltip('destroy').attr({'title': text, 'data-toggle': 'tooltip'}).tooltip({container: '.FixedHeader_Cloned', placement: 'bottom'}).tooltip('show');
+            }
+            var setCur = function(a, b) {
+                cur.min = a;
+                cur.max = b;
+                setTooltip(1, a);
+                setTooltip(2, b);
+                //$('input.range', cell).val(a + '–' + b);
+            }
+            setCur(lo, hi);
+
+            $.fn.dataTable.ext.search.push(
+                function(settings, data, dataIndex) {
+                    var val = parseInt(data[colIdx]) || 0;
+                    return (cur.min <= val && val <= cur.max);
+                }
+            );
+            $('.slider', cell).slider({
+                range: true,
+                min: lo,
+                max: hi,
+                values: [lo, hi],
+                slide: function(evt, ui) {
+                    setCur(ui.values[0], ui.values[1]);
+                    // Using regexp seems better than parsing each entry as int
+                    table.draw();
+                },
+            });
+            $('.slider').mouseout(function() {
+                $('.ui-slider-handle', this).tooltip('destroy');
+            })
+        }
+        $('input.search', cell).on('keyup change', function () {
+            // case insensitive regex search
+            table.column(colIdx).search(this.value, true, false, true).draw();
+        });
+    } );
+});
+</script>
+{% endblock %}

@@ -1,9 +1,11 @@
+# -*- coding: utf-8 -*-
+
 from __future__ import print_function, absolute_import, division
 import re
 import logging
 import datetime
 import urllib
-from collections import Counter, defaultdict
+from collections import Counter, defaultdict, namedtuple
 
 import pytz
 from lxml import etree
@@ -46,7 +48,7 @@ def _make_extractor(field):
 _empty_doc = etree.fromstring('<x></x>')
 
 
-EXTRACTED_FIELDS = ['headline', 'dateline', 'byline', 'body_text', 'body_html']
+EXTRACTED_FIELDS = ['headline', 'dateline', 'byline', 'body_text',]# 'body_html']
 
 class UrlSignature(models.Model):
     objects = UrlSignatureManager()
@@ -234,17 +236,10 @@ assert re.search(ISO_DATE_RE, '199805011900Z')
 
 class DownloadedArticleQS(models.query.QuerySet):
     def add_diagnostics(self, values=False):
-        fmt = '("{}" {} \'{}\')::int'.format
         select = {}
-        for field in DownloadedArticle.EXTRACTED_FIELDS:
-            # XXX: don't forget nulls when aggregating
-            select[field + '_has_value'] = '("{}" is not null)::int'.format(field)
-            select[field + '_has_markup'] = fmt(field, '~', '.*<.+>.*')
-            select[field + '_has_newline'] = fmt(field, '~', r'.*\n.*')
-            select[field + '_has_emptyline'] = fmt(field, '~', r'.*\n\n.*')
-            select[field + '_has_loosepunc'] = fmt(field, '~', r'.*\s[^[:alnum:]_-]\s.*')
-
-        select['dateline_has_noniso'] = fmt(field, '!~', ISO_DATE_RE)
+        for extra in DownloadedArticle.DIAGNOSTIC_EXTRAS:
+            for field in extra.fields or DownloadedArticle.EXTRACTED_FIELDS:
+                select[field + '_has_' + extra.name] = extra.expr % field
         q = self.extra(select=select)
         if values:
             keys = select.keys()
@@ -257,6 +252,8 @@ class DownloadedArticleQS(models.query.QuerySet):
 class DownloadedArticleManager(models.Manager):
     def get_queryset(self):
         return DownloadedArticleQS(self.model)
+
+DiagnosticExtra = namedtuple('DiagnosticExtra', 'name expr fields')
 
 
 class DownloadedArticle(models.Model):
@@ -344,6 +341,17 @@ class DownloadedArticle(models.Model):
         html = re.sub('(?i)^([^>]*) encoding=[^> ]*', r'\1', self.html)
         return etree.fromstring(html, parser=etree.HTMLParser(),
                                 base_url=self.article.url)
+
+    _fmt = '("%s" {} \'{}\')::int'.format
+    DIAGNOSTIC_EXTRAS = [
+        DiagnosticExtra('null', '("%s" is null)::int', None),
+        DiagnosticExtra('markup', _fmt('~', '.*<.+>.*'), ('headline', 'byline', 'body_text', 'dateline')),
+        DiagnosticExtra('newline', _fmt('~', r'.*\n.*'), ('headline', 'byline', 'dateline',)),
+        DiagnosticExtra('emptyline', _fmt('~', r'.*\n\n.*'), None),
+        DiagnosticExtra('loosepunc', _fmt('~', r'.*\s[^[:alnum:]_–—―-]\s.*'), None),
+        DiagnosticExtra('noniso', _fmt('!~', ISO_DATE_RE), ('dateline',)),
+    ]
+    del _fmt
 
 
 def dev_sample_diagnostics():
