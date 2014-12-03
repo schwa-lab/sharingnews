@@ -12,7 +12,7 @@ from django.core.urlresolvers import reverse
 
 from .models import SpideredUrl, Article, DownloadedArticle, UrlSignature, dev_sample_diagnostics
 from .scraping import extract
-from .cleaning import compress_html
+from .cleaning import compress_html, insert_base_href
 
 
 def article(request, id):
@@ -28,6 +28,9 @@ def article_raw(request, id):
     downloaded = get_object_or_404(DownloadedArticle, article_id=id)
     html = compress_html(downloaded.html)
     style = request.GET.get('style')
+
+    html = insert_base_href(html, downloaded.article.url)
+
     if style in ('none', 'selector'):
         html = re.sub(r'(?i)<link[^>]*\brel=(["\']?)stylesheet[^>]*>', '', html)
     if style == 'selector':
@@ -49,11 +52,12 @@ def article_raw(request, id):
           classes = classes.filter(function(s){return s;})
           var id = node.getAttribute('id');
           var prefix = node.parentElement ? compileSelector(node.parentElement) + ' > ' : '';
-          return prefix + node.tagName + (classes.length ? '.' + classes.join('.') : '') + (id ? '#id' : '');
+          return prefix + node.tagName + (classes.length ? '.' + classes.join('.') : '') + (id ? '#' + id : '');
         }
 
         document.addEventListener('click', function(evt) {
           alert(compileSelector(evt.target));
+          return false;
         }, false);
         </script>
         '''
@@ -234,7 +238,6 @@ def extractor_eval(request, sig):
     for article in dev_sample:
         parsed = article.downloaded.parsed_html
         for selector in selectors:
-            # XXX: need correct test for element
             results[selector][article.id] = extract(selector, parsed, as_unicode=True)
     return results
 

@@ -2,7 +2,9 @@ import re
 import tldextract
 import urlparse
 import urllib
-from xml.sax.saxutils import unescape as xml_unescape
+from xml.sax.saxutils import escape as xml_escape
+import HTMLParser
+xml_unescape = HTMLParser.HTMLParser().unescape
 
 
 DIGIT_RE = re.compile('[0-9]')
@@ -170,4 +172,13 @@ def compress_html(html):
     ### html = re.sub(r'<!--.*?-->', '', html)
     # remove excess whitespace
     html = re.sub(WHITESPACE_RE, r'\1\2', html).strip()
+    return html
+
+
+def insert_base_href(html, url):
+    match = re.search(r'(?i)<base[^>]*\bhref=(["\'])?(.*)?\1', html)
+    if match is not None:
+        url = urlparse.urljoin(url, xml_unescape(match.group(1)))
+        html = re.sub(r'(?i)<base\b[^>]*>', '', html)
+    html = re.sub('(<head[^>]*>)', r'\1<base href="{}">'.format(xml_escape(url)), html)
     return html
