@@ -286,6 +286,7 @@ class DownloadedArticle(models.Model):
             content = re.search(r'(?i)\bcontent=(["\'])(.*?)\1', tag)  # TODO: support unquoted
             if content is None:
                 logging.warn('Found name but no content in %s', tag)
+                continue
             # todo: unescape
             yield name, xml_unescape(content.group(2))
 
