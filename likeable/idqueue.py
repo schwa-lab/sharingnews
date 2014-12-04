@@ -6,6 +6,7 @@ import socket
 import argparse
 import logging
 import json
+import traceback
 
 import pika
 import django
@@ -36,9 +37,13 @@ def enqueue(channel, queue, f):
 
 def worker(channel, queue, process_cb, args):
     def worker_callback(channel, method, properties, body):
-        process_cb(args, body)
-        channel.basic_ack(delivery_tag=method.delivery_tag)
-        reset_queries()
+        try:
+            process_cb(args, body)
+        except Exception:
+            json_log(body=body, traceback=traceback.format_exc())
+        else:
+            channel.basic_ack(delivery_tag=method.delivery_tag)
+        reset_queries()  # avoid memory leak
 
     channel.basic_qos(prefetch_count=10)
     channel.basic_consume(worker_callback, queue=queue)

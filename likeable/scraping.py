@@ -29,7 +29,6 @@ class FetchException(Exception):
 
 
 def fetch_with_refresh(url, accept_encodings=HTTP_ENCODINGS, max_delay=20):
-    print(url)
     try:
         hops = []
         refresh = True
@@ -50,7 +49,7 @@ def fetch_with_refresh(url, accept_encodings=HTTP_ENCODINGS, max_delay=20):
                 except AttributeError:
                     pass
                 continue
-            print('>', response)
+            print('>', response, 'to', url)
             hops.extend(response.history)
             hops.append(response)
             if response.status_code >= 400:
