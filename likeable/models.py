@@ -12,6 +12,7 @@ from lxml import etree
 from readability import readability
 from django.db import models
 from django.core.urlresolvers import reverse
+from dateutil.parser import parse as parse_date
 
 from .cleaning import xml_unescape
 from .scraping import extract, DEFAULT_CODE
@@ -276,6 +277,25 @@ class DownloadedArticle(models.Model):
     body_html = models.TextField(null=True)  # should this be stored?
     # media = models.ManyToMany(MediaItem)
     # comments_data = models.OneToOneField(CommentsData)
+
+    @property
+    def full_text(self):
+        return u'{}\n\n{}'.format((self.headline or u'').strip(),
+                                (self.body_text or u'').strip())
+
+    @property
+    def first_paragraph(self):
+        if self.body_text is None:
+            return
+        return self.body_text.strip().partition(u'\n')[0]
+
+    def parse_datetime(self):
+        if self.dateline is None:
+            return None
+        try:
+            return parse_date(self.dateline.split('yyyy-')[0])  # HACK: fix some dodgy ISO formatting
+        except Exception:
+            logger.warn('Failed to parse date: {!r}'.format(self.dateline))
 
     def _get_meta_fields(self):
         for tag in re.findall('(?i)<meta\s.*?>', self.html):

@@ -12,3 +12,6 @@ readability-lxml
 django-jsonview
 pika
 pytz
+django-crispy-forms
+python-dateutil
+unidecode
