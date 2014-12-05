@@ -13,9 +13,11 @@ from readability import readability
 from django.db import models
 from django.core.urlresolvers import reverse
 from dateutil.parser import parse as parse_date
+from bs4 import UnicodeDammit
 
-from .cleaning import xml_unescape
-from .scraping import extract, DEFAULT_CODE
+from .cleaning import xml_unescape, compress_html, extract_canonical
+from .scraping import extract, DEFAULT_CODE, fetch_with_refresh
+
 
 logger = logging.getLogger(__name__)
 
@@ -199,6 +201,49 @@ class Article(models.Model):
 
     def get_absolute_url(self):
         return reverse('likeable.views.article', kwargs={'id': self.id})
+
+    def download(self, force=False, save=True, accept_encodings=None):
+        if self.fetch_status == 200 and self.downloaded is not None:
+            if force:
+                self.fetch_status = None
+                self.downloaded.delete()
+            else:
+                return self.downloaded, None
+
+        timestamp = utcnow()
+        hops = fetch_with_refresh(self.url, accept_encodings)
+        response = hops[-1]
+        status = response.status_code
+        self.fetch_status = status
+        if status != 200:
+            if save:
+                self.save()
+            return None, hops
+
+        # TODO: mime check?
+
+        content = response.content  # get content, interpret as unicode
+        override_encodings = ([response.encoding]
+                              if response.encoding is not None else [])
+        ud = UnicodeDammit(content, override_encodings=override_encodings,
+                           is_html=True)
+        if ud.unicode_markup is None:
+            raise UnicodeDecodeError('UnicodeDammit failed for '
+                                     '{}'.format(self.id))
+        content = ud.unicode_markup
+
+        canonical = extract_canonical(content)
+        if canonical == self.url:
+            canonical = None
+
+        downloaded = DownloadedArticle(article=self,
+                                       html=compress_html(content),
+                                       fetch_when=timestamp,
+                                       canonical_url=canonical)
+        if save:
+            downloaded.save()
+            self.save()
+        return self.downloaded, hops
 
     class Meta:
         index_together = [

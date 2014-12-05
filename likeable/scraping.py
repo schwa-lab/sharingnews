@@ -33,7 +33,7 @@ def fetch_with_refresh(url, accept_encodings=HTTP_ENCODINGS, max_delay=20):
         hops = []
         refresh = True
         while refresh is not None:
-            headers = {'accept-encoding': ', '.join(accept_encodings)}
+            headers = {'accept-encoding': ', '.join(accept_encodings or HTTP_ENCODINGS)}
             try:
                 response = requests.get(url, timeout=10, headers=headers)
             except requests.exceptions.ContentDecodingError as e:
@@ -75,6 +75,8 @@ def fetch_with_refresh(url, accept_encodings=HTTP_ENCODINGS, max_delay=20):
                     refresh = None
     except Exception as e:
         raise FetchException(e, url, hops)
+    if hops[-1].status_code == 200 and not hops[-1].content:
+        raise FetchException('Status 200 but empty content', url, hops)
     return hops
 
 
