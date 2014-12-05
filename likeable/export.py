@@ -66,7 +66,7 @@ def export_folders(article, basename=None, ascii=True):
     format_field = partial(_format_text_field, article, ascii=ascii)
     fmt = lambda s: s.format(ext=ext, basename=basename)
 
-    yield fmt('web/{basename}.html'), format_redirect_page(article)
+    yield fmt('web/{basename}.redirect.html'), format_redirect_page(article)
     yield fmt('html/{basename}.html'), format_html(article)
     yield fmt('fulltext/{basename}.fulltext{ext}'), format_field('full_text')
     yield fmt('headline/{basename}.headline{ext}'), format_field('headline')

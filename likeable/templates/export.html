@@ -1,0 +1,86 @@
+{% extends "layout.html" %}
+{% block content %}
+<h1>Export data</h1>
+
+<form method="get" role="form">
+	<label for="loadSaved">Load saved export settings:</label>
+	<select id="loadSaved" name="preset" class="form-control">
+		<option value="11111">Preset by name</option>
+	</select>
+</form>
+<hr>
+
+<form method="post" role="form">
+	<fieldset>
+		<legend>Filter by metdata/content</legend>
+		<div class="control-group">
+			<label class="control-label" for="domains">Which domains</label>
+			<!-- TODO: jquery this into a two-select form -->
+			<!-- TODO: allow the loading of presets -->
+			<select multiple rows="5" id="domains" name="domains" class="form-control">
+				<option>example.com</option>
+				<option>example.com.au</option>
+				<option>example.co.uk</option>
+			</select>
+		</div>
+		<div class="form-group">
+			<label class="control-label" for="period">Period</label>
+			<!-- Perhaps allow user to choose which date field?? -->
+		</div>
+		<div class="form-group">
+			<label class="control-label" for="fullsearch">Article contains</label>
+			<input type="text" name="contains" id="fullsearch" class="form-control">
+		</div>
+	</fieldset>
+	<fieldset>
+		<legend>Group and filter by shares</legend>
+		<div class="form-group">
+			<div class="radio">
+				<div class="form-inline">
+				<label class="control-label"><input type="radio" name="grouping" value="topn" id="selectByRank"> Get top</label>
+					<div class="form-group"><input type="text" name="topn_param" placeholder="how many?"></div>
+				</div>
+			</div>
+		</div>
+		<div class="form-group">
+			<label class="control-label" for="measure">Rank articles by</label>
+			<select id="measure" name="measure" class="form-control">
+				<option value="fb-total-longterm">FB total shares at &gt;1mo</option>
+			</select>
+			<!-- TODO: show description of measure when selected -->
+			<!-- TODO: perhaps add "relative to" or "as a proportion of" as separate select -->
+		</div>
+	</fieldset>
+	<fieldset>
+		<legend>Textual content</legend>
+		<p>Concatenate the following into <q>all</q> field:</p>
+
+		<label><input type="checkbox" name="tokenize"> tokenise the text</label>
+	</fieldset>
+	<fieldset>
+		<legend>Reduced sample</legend>
+		<div class="radio"><label><input type="radio" name="sample" value=""> get all matching (may be very big)</label></div>
+		<div class="radio"><label><input type="radio" name="sample" value="undersample" checked> undersample: sample all groups to be same size as the smallest group</label></div>
+		<div class="radio"><label><input type="radio" name="sample" value="atmost"> at most <input type="text" name="sample_atmost" placeholder="how many?"> per group</label></div>
+		<div class="radio"><label><input type="radio" name="sample" value="percent"> <span class="input-group"><input type="text" name="sample_percent" class="form-control"><span class="input-group-addon">.00</span></span></div>
+	<fieldset>
+		<legend>About this export</legend>
+		<div class="form-group">
+			<label class="control-label" for="nameCtl">Name this setup</label>
+			<input type="text" name="name" id="nameCtl" class="form-control">
+			<label class="control-label" for="descCtl">Notes</label>
+			<textarea type="text" name="notes" id="descCtl" class="form-control"></textarea>
+		</div>
+	</fieldset>
+	<!-- TODO: which field(s) to concatenate for spreadsheet output -->
+	<!-- TODO: perhaps additional categorical or continuous labels for spreadsheet output -->
+	<!-- TODO: confirm overwrite for updated preset -->
+	<div class="form-group">
+		<input type="submit" name="exportlisting" value="View listing" class="btn btn-default">
+		<input type="submit" name="exportspreadsheet" value="Export spreadsheet" class="btn btn-default">
+		<input type="submit" name="exportfolders" value="Export folders" class="btn btn-default">
+	</div>
+	{% csrf_token %}
+</form>
+
+{% endblock %}

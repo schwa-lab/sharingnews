@@ -44,7 +44,8 @@ INSTALLED_APPS = [
     'likeable',
 ]
 if 'runserver' in sys.argv:
-    INSTALLED_APPS.append('debug_toolbar.apps.DebugToolbarConfig')
+    #INSTALLED_APPS.append('debug_toolbar.apps.DebugToolbarConfig')
+    pass
 
 MIDDLEWARE_CLASSES = (
     'django.contrib.sessions.middleware.SessionMiddleware',

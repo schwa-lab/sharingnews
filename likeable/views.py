@@ -3,16 +3,23 @@ import datetime
 from collections import defaultdict
 import re
 from xml.sax.saxutils import escape as xml_escape
+import random
+import itertools
+import io
+import csv
 
 from jsonview.decorators import json_view
 from django.shortcuts import render_to_response, redirect, get_object_or_404
 from django.http import Http404, HttpResponseBadRequest, HttpResponse
 from django.template import RequestContext
 from django.core.urlresolvers import reverse
+from django.db.models import F
 
 from .models import SpideredUrl, Article, DownloadedArticle, UrlSignature, dev_sample_diagnostics
 from .scraping import extract
 from .cleaning import compress_html, insert_base_href
+from .view_helpers import send_zipfile
+from .export import build_basename, export_folders
 
 
 def article(request, id):
@@ -291,4 +298,227 @@ def extractor_report(request):
     return render_to_response('extractor-report.html',
                               {'columns': DownloadedArticle.DIAGNOSTIC_EXTRAS,
                                'rows': get_rows()},
+                              context_instance=RequestContext(request))
+
+
+# TODO: perhaps move to models.Article
+MEASURE_FIELDS = {
+    'fb-total-longterm': F('total_shares'),
+}
+
+# XXX: this may belong in models
+def _group_for_export(grouping='topn', measure='fb-total-longterm', exclude_domains=None, domains=None, start_date=None,
+                      end_date=None, contains=None, topn_param=[100],
+                      sample='undersample', sample_atmost=None, sample_percent=None,
+                      fetched_only=True, ignore_fb_zeros=True, **kwargs):
+    articles = Article.objects.all()
+    # HACK: Exclude domain root as non-article
+    articles = articles.exclude(url_signature__signature__regex='^[^/]*//$')
+    if fetched_only:
+        articles = articles.filter(downloaded__isnull=False)
+    if ignore_fb_zeros:
+        articles = articles.filter(total_shares__gt=0)
+
+    if domains is not None:
+        articles = articles.filter(url_signature__base_domain__in=domains)
+    if exclude_domains is not None:
+        articles = articles.exclude(url_signature__base_domain__in=exclude_domains)
+
+###    if start_date is not None:
+###        # TODO: date search once date is stored as timestamp
+###        articles = articles.filter(downloadedarticle__)
+###    if end_date is not None:
+###        # TODO: date search once date is stored as timestamp
+###        articles = articles.filter(downloadedarticle__)
+###    if contains is not None:
+###        # TODO: full-text search once tsvector is stored
+###        articles = articles.filter()
+
+    measure = MEASURE_FIELDS[measure]
+    # Requires Django 1.8:
+    articles = articles.annotate(measure=measure).order_by('-measure')
+
+    articles = articles.values_list('id', 'measure')
+
+    # apply any immediate limitations
+    if grouping == 'topn':
+        # topn_param should be ascending list of ints
+        articles = list(articles[:topn_param[-1]])
+        groups = []
+        for start, stop in zip([0] + topn_param, topn_param):
+            groups.append(articles[start:stop])
+
+    # Groups should be lists by now...
+
+    rng = random.Random(42)
+    if sample in ('undersample', 'atmost'):
+        if sample == 'undersample':
+            sample_atmost = min(map(len, groups))
+        sample_atmost = itertools.repeat(sample_atmost)
+    elif sample == 'percent':
+        sample_atmost = (int(sample_percent / 100 * len(group) + .5) for group in groups)
+    if sample_atmost is not None:
+        groups = [_downsample(rng, group, atmost)
+                  for group, atmost in zip(groups, sample_atmost)]
+    print('Group lengths', [len(g) for g in groups])
+    return groups
+
+
+def _downsample(rng, articles, sample_size):
+    """Reservoir sample while maintaining sorted order"""
+    reservoir = articles[:sample_size]
+    n = sample_size
+    for art in articles[sample_size:]:
+        n += 1
+        i = int(rng.random() * n)
+        if i < sample_size:
+            del reservoir[i]
+            reservoir.append(art)
+    return reservoir
+
+
+def _get_export_contents(groups, queryset):
+    for group in groups:
+        # FIXME: This could be very memory-intensive
+        # Needs to be a generator, with batched queries of limited size
+        lookup = queryset.objects.in_bulk([article_id
+                                           for article_id, measure in group])
+        out = []
+        for article_id, measure in group:
+            article = lookup[article_id]
+            if isinstance(article, dict):
+                article['measure'] = measure
+            else:
+                article.measure = measure
+            out.append(article)
+        yield out
+
+
+def _gen_export_folders(groups, articles, BATCH_SIZE=200):
+    """
+
+    - groups is a list of lists of (article id, measure)
+    - articles is a queryset
+
+    """
+    index_file = io.BytesIO()
+    index_writer = csv.writer(index_file)
+    index_writer.writerow(['group', 'share_measure', 'filename', 'id', 'url', 'pubdate', 'body_wordcount'])
+    group_digits = len(str(len(groups)))
+    for i, group in enumerate(groups):
+        group_dir = 'group{:0{n}d}/'.format(i + 1, n=group_digits)
+        group_num = str(i + 1)
+        group = iter(group)
+        while True:
+            batch = itertools.islice(group, BATCH_SIZE)
+            batch = list(batch)
+            if not batch:
+                break
+
+            lookup = articles.in_bulk([article_id for article_id, measure in batch])
+            for article_id, measure in batch:
+                article = lookup[article_id]
+                basename = build_basename(article)
+                if article.downloaded.body_text is None:
+                    word_count = 0
+                else:
+                    word_count = len(article.downloaded.body_text.split())
+                try:
+                    pubdate = article.downloaded.parse_datetime().isoformat()
+                except Exception:  # XXX should be more specific
+                    pubdate = ''
+                index_writer.writerow([group_num, measure, basename.encode('utf8'),
+                                       article.id, article.url,
+                                       pubdate,
+                                       word_count])
+                for filename, content in export_folders(article, basename=basename, ascii=True):
+                    yield group_dir + filename, content
+
+        index_file.seek(0)
+        yield 'index.csv', index_file
+
+
+excluded_domains = '''
+buzzfeed.com
+cracked.com
+gawker.com
+go.com
+godvine.com
+huffingtonpost.com
+jezebel.com
+mashable.com
+msn.com
+petflow.com
+pogo.com
+slate.com
+techcrunch.com
+theconversation.com
+thedailybeast.com
+thoughtcatalog.com
+tmz.com
+trueactivist.com
+twitter.com
+vimeo.com
+vizcio.com
+yahoo.com
+youtube.com
+
+?brisbanetimes.com.au
+?businessinsider.com.au
+?politico.com
+
+?ew.com
+?forbes.com
+?hollywoodreporter.com
+?people.com
+?rollingstone.com
+?time.com
+?vanityfair.com
+?theatlantic.com
+
+?repubblica.it
+?corriere.it
+
+npr.org
+today.com
+'''
+
+
+def post_export(request, data):
+    # TODO: save as preset
+    # TODO: async thread and response with "check status here" link
+###    groups = _group_for_export(**data)
+    groups = _group_for_export(exclude_domains=excluded_domains.replace('?', '').split(), topn_param=[200])
+    # groups is a list of lists of (article_id, measure) pairs
+    if data.get('exportlisting'):
+        articles = Article.objects.only('id', 'title', 'url', 'url_signature').prefetch_related('url_signature')
+    elif data.get('exportfolders'):
+        articles = Article.objects.all()
+    # TODO: alternatives
+
+    ### XXX: design is hard until we know how these things are being output
+    # Dropbox requires auth process, as well as way of notifying user the job is done
+    # May also be able to upload zip concurrent with building
+
+    # Each exporter can generate files, and zipping logic can be external, but do we need an approach that can return a page to viewer?
+    # ZipFile can either write locally, or can write to a DropBox chunked uploader
+    return send_zipfile(request, _gen_export_folders(groups, articles), 'export.zip')
+
+
+
+def export(request):
+    if request.method == 'POST':
+        return post_export(request, request.POST)
+###        form = ExportForm(request.POST)
+###        if form.is_valid():
+###            return post_export(request, form.cleaned_data)
+    else:
+        preset = request.GET.get('preset')
+###        if preset is None:
+###            form = ExportForm()
+###        else:
+###            # TODO: load
+###            pass
+    # TODO: load list of presets
+    return render_to_response('export.html',
                               context_instance=RequestContext(request))
