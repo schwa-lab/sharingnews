@@ -36,7 +36,7 @@ def _format_text_field(article, field, ascii=True):
         except Exception:
             print(field, content)
             raise
-    return content
+    return content.replace('\n', '\r\n') + '\r\n'
 
 
 def _camelcase(s):
