@@ -54,13 +54,13 @@ if __name__ == '__main__':
 
     articles = Article.objects
     if getattr(args, 'cutoff', None) is not None:
-        articles = articles.filter(total_shares__gt=args.cutoff)
+        articles = articles.filter(fb_count_longterm__gt=args.cutoff)
     if getattr(args, 'domain', None) is not None:
         articles = articles.filter(url_signature__base_domain=args.domain)
 
-    articles = articles.filter(total_shares__isnull=False)
-    articles = articles.order_by('-total_shares')
-    articles = articles.values_list('url', 'total_shares', 'id',
+    articles = articles.filter(fb_count_longterm__isnull=False)
+    articles = articles.order_by('-fb_count_longterm')
+    articles = articles.values_list('url', 'fb_count_longterm', 'id',
                                     'url_signature__base_domain', 'fb_created',
                                     'title', 'description')
 

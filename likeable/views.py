@@ -157,15 +157,15 @@ def collection(request, sig=None, period=None, start=None, end=None):
     bins = [0, 1, 10, 100, 1000, 10000, 100000, 1000000]
 
     bin_data = (articles.bin_shares(bins).values('binned_shares')
-                        .annotate_stats('total_shares').order_by('min'))
+                        .annotate_stats('fb_count_longterm').order_by('min'))
     bin_data = list(bin_data)
     for i, entry in enumerate(bin_data):
         if entry['count'] == 0:
             bin_data = bin_data[:i]
             break
         entry['example'] = (articles.bin_shares(bins)
-                                    .filter(total_shares__gte=entry['min'],
-                                            total_shares__lte=entry['max'])[0])  # order_by('?') is expensive
+                                    .filter(fb_count_longterm__gte=entry['min'],
+                                            fb_count_longterm__lte=entry['max'])[0])  # order_by('?') is expensive
 
     fetched = articles.filter(fetch_status__isnull=False)
     fetched_success = fetched.filter(fetch_status__gte=200, fetch_status__lt=300)
@@ -303,7 +303,7 @@ def extractor_report(request):
 
 # TODO: perhaps move to models.Article
 MEASURE_FIELDS = {
-    'fb-total-longterm': F('total_shares'),
+    'fb-total-longterm': F('fb_count_longterm'),
 }
 
 # XXX: this may belong in models
@@ -317,7 +317,7 @@ def _group_for_export(grouping='topn', measure='fb-total-longterm', exclude_doma
     if fetched_only:
         articles = articles.filter(downloaded__isnull=False)
     if ignore_fb_zeros:
-        articles = articles.filter(total_shares__gt=0)
+        articles = articles.filter(fb_count_longterm__gt=0)
 
     if domains is not None:
         articles = articles.filter(url_signature__base_domain__in=domains)

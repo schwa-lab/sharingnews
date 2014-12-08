@@ -46,7 +46,7 @@ def fetch_data(entries, domains):
             fbgraph = fetch_facebook_ids(fburls).json()
             entry['fbgraph'].update({k.split('/')[2]: fbe for k, fbe in fbgraph.items()})
             time.sleep(0.2)
-        print('>', i, entry['url'], entry['total_shares'], file=sys.stderr)
+        print('>', i, entry['url'], entry['fb_count_longterm'], file=sys.stderr)
 
 
 def print_raw(entries, domains, f):
@@ -90,10 +90,10 @@ def main():
         articles = articles.filter(url__startswith=args.url_startswith)
     if getattr(args, 'url_endswith', None):
         articles = articles.filter(url__endswith=args.url_endswith)
-    articles = articles.order_by('-total_shares')
+    articles = articles.order_by('-fb_count_longterm')
     if articles.count() == 0:
         ap.error('No articles found')
-    entries = list(articles.values('url', 'total_shares')[:args.count])
+    entries = list(articles.values('url', 'fb_count_longterm')[:args.count])
 
     if getattr(args, 'update', None):
         old_entries = {entry['url']: entry for entry in json.load(open(args.update))}

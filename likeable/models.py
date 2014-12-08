@@ -129,21 +129,21 @@ class UrlSignature(models.Model):
 
 class ArticleQS(models.query.QuerySet):
     def calc_share_quantiles(self, percentiles=[50, 75, 90, 95, 99]):  #  min_fb_created=None, max_fb_created=None):
-        nonzero_shares = (self.filter(total_shares__gt=0)
-                              .values_list('total_shares', flat=True)
-                              .order_by('total_shares'))
+        nonzero_shares = (self.filter(fb_count_longterm__gt=0)
+                              .values_list('fb_count_longterm', flat=True)
+                              .order_by('fb_count_longterm'))
         #N = nonzero_shares.count()
         nonzero_shares = list(nonzero_shares)
         N = len(nonzero_shares)
         return [nonzero_shares[int(N * p / 100)]
                 for p in percentiles]
 
-    def bin_shares(self, bin_max, field_name='binned_shares', shares_field='total_shares'):
+    def bin_shares(self, bin_max, field_name='binned_shares', shares_field='fb_count_longterm'):
         cases = ' '.join('WHEN {} <= {} THEN {}'.format(shares_field, int(m), i)
                          for i, m in enumerate(bin_max))
-        return self.filter(total_shares__isnull=False).extra(select={field_name: 'CASE {} ELSE {} END'.format(cases, len(bin_max))})
+        return self.filter(fb_count_longterm__isnull=False).extra(select={field_name: 'CASE {} ELSE {} END'.format(cases, len(bin_max))})
 
-    def annotate_stats(self, field='total_shares'):
+    def annotate_stats(self, field='fb_count_longterm'):
         return self.annotate(count=models.Count('pk'),
                              avg=models.Avg(field),
                              min=models.Min(field),
@@ -175,7 +175,17 @@ class Article(models.Model):
     fb_has_title = models.BooleanField(default=False, db_index=True)  # for easy indexing
     title = models.CharField(max_length=1000, null=True)  # taken from Facebook scrape
     description = models.TextField(null=True)
-    total_shares = models.PositiveIntegerField(null=True)  # tmp
+
+    fb_count_initial = models.PositiveIntegerField(null=True)
+    fb_count_2h = models.PositiveIntegerField(null=True)
+    fb_count_1d = models.PositiveIntegerField(null=True)
+    fb_count_5d = models.PositiveIntegerField(null=True)
+    fb_count_longterm = models.PositiveIntegerField(null=True)
+    tw_count_initial = models.PositiveIntegerField(null=True)
+    tw_count_2h = models.PositiveIntegerField(null=True)
+    tw_count_1d = models.PositiveIntegerField(null=True)
+    tw_count_5d = models.PositiveIntegerField(null=True)
+    tw_count_longterm = models.PositiveIntegerField(null=True)
 
     fetch_status = models.IntegerField(null=True)
     # fetch_when = models.DateTimeField(null=True)
@@ -249,7 +259,7 @@ class Article(models.Model):
         index_together = [
             ('url_signature', 'fb_created'),
             ('fetch_status', 'url_signature'),
-            ('total_shares', 'url_signature'),
+            ('fb_count_longterm', 'url_signature'),
         ]
 
 ISO_DATE_RE = ('^[12][0-9]{3}'

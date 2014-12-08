@@ -28,18 +28,18 @@ psql -h schwa09 likeable likeable -e <<EOF
 \\set ON_ERROR_STOP 1
 \\echo \`date\`
 CREATE TEMPORARY TABLE jsontmp$$ (blob JSON);
-CREATE TEMPORARY TABLE articletmp$$ (in_url TEXT, id BIGINT, url VARCHAR(1000), fb_updated TIMESTAMP, fb_type VARCHAR(35), title TEXT, description TEXT, total_shares BIGINT);
+CREATE TEMPORARY TABLE articletmp$$ (in_url TEXT, id BIGINT, url VARCHAR(1000), fb_updated TIMESTAMP, fb_type VARCHAR(35), title TEXT, description TEXT, fb_count_longterm BIGINT);
 \\copy jsontmp$$ FROM '$tmpdir/pipe' DELIMITER '	';
 
 \\echo \`date\`
-EXPLAIN ANALYZE INSERT INTO articletmp$$ (in_url, id, url, fb_updated, fb_type, title, description, total_shares)
+EXPLAIN ANALYZE INSERT INTO articletmp$$ (in_url, id, url, fb_updated, fb_type, title, description, fb_count_longterm)
 SELECT blob->>'_id', (blob->'og_object'->>'id')::bigint, blob->'og_object'->>'url', (blob->'og_object'->>'updated_time')::timestamp, blob->'og_object'->>'type', btrim(blob->'og_object'->>'title'), blob->'og_object'->>'description', (blob->'share'->>'share_count')::bigint FROM jsontmp$$;
 
 SELECT * FROM articletmp$$ WHERE char_length(title) > 1000;
 
 \\echo \`date\`
-EXPLAIN ANALYZE INSERT INTO likeable_article (id, url, fb_updated, fb_type, fb_has_title, title, description, total_shares, url_signature_id)
-	SELECT DISTINCT ON (id) t.id, t.url, fb_updated, fb_type, title IS NOT NULL, title, description, total_shares, url_signature_id
+EXPLAIN ANALYZE INSERT INTO likeable_article (id, url, fb_updated, fb_type, fb_has_title, title, description, fb_count_longterm, url_signature_id)
+	SELECT DISTINCT ON (id) t.id, t.url, fb_updated, fb_type, title IS NOT NULL, title, description, fb_count_longterm, url_signature_id
     FROM articletmp$$ t LEFT JOIN likeable_spideredurl s ON t.url = s.url
 	WHERE t.id IS NOT NULL
 	AND t.url IS NOT NULL
