@@ -60,6 +60,8 @@ def download_and_save(args, article_id):
         _, hops = article.download(url, accept_encodings=domain_encodings[domain])
     except FetchException as exc:
         hops = exc.hops
+    else:
+        exc = None
 
     _save_log(article, prior_status, hops, exc)
 
