@@ -74,6 +74,8 @@ def main(name, process_cb, argparse_cb=None):
     worker_ap.set_defaults(app='worker')
     count_ap = subs.add_parser('count')
     count_ap.set_defaults(app='count')
+    count_ap = subs.add_parser('purge')
+    count_ap.set_defaults(app='purge')
 
     if argparse_cb is not None:
         argparse_cb(ap)
@@ -98,4 +100,8 @@ def main(name, process_cb, argparse_cb=None):
         enqueue(channel, args.queue, args.infile)
     elif args.app == 'count':
         print(queue.method.message_count)
+    elif args.app == 'purge':
+        n = queue.method.message_count
+        channel.queue_purge(queue=args.queue)
+        print('Purged', n)
     connection.close()
