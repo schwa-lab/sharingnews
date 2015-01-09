@@ -90,18 +90,27 @@ def main(name, process_cb, argparse_cb=None):
     print('Logging to', args.log_path + '*', file=sys.stderr)
     logger.addHandler(handler)
 
-    conn_params = pika.ConnectionParameters(host=args.host, port=args.port)
-    connection = pika.BlockingConnection(conn_params)
-    channel = connection.channel()
-    queue = channel.queue_declare(queue=args.queue, durable=True, passive=args.app == 'count')
-    if args.app == 'worker':
-        worker(channel, args.queue, process_cb, args)
-    elif args.app == 'enqueue':
-        enqueue(channel, args.queue, args.infile)
-    elif args.app == 'count':
-        print(queue.method.message_count)
-    elif args.app == 'purge':
-        n = queue.method.message_count
-        channel.queue_purge(queue=args.queue)
-        print('Purged', n)
-    connection.close()
+    while True:
+        conn_params = pika.ConnectionParameters(host=args.host, port=args.port)
+        connection = pika.BlockingConnection(conn_params)
+        channel = connection.channel()
+        queue = channel.queue_declare(queue=args.queue, durable=True, passive=args.app == 'count')
+        if args.app == 'worker':
+            try:
+                worker(channel, args.queue, process_cb, args)
+            except pika.exceptions.ConnectionClosed:
+                import time
+                wait = 5
+                print('Attempting to reconnect in', wait, 'seconds', file=sys.stderr)
+                time.sleep(wait)
+                continue
+        elif args.app == 'enqueue':
+            enqueue(channel, args.queue, args.infile)
+        elif args.app == 'count':
+            print(queue.method.message_count)
+        elif args.app == 'purge':
+            n = queue.method.message_count
+            channel.queue_purge(queue=args.queue)
+            print('Purged', n)
+        connection.close()
+        break
