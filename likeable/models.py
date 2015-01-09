@@ -17,6 +17,8 @@ from bs4 import UnicodeDammit
 
 from .cleaning import xml_unescape, compress_html, extract_canonical
 from .scraping import extract, DEFAULT_CODE, fetch_with_refresh
+from .models_helpers import IntArrayField
+from .structure import sketch_doc
 
 
 logger = logging.getLogger(__name__)
@@ -250,6 +252,7 @@ class Article(models.Model):
                                        html=compress_html(content),
                                        fetch_when=timestamp,
                                        canonical_url=canonical)
+        downloaded.structure_sketch = sketch_doc(downloaded.parsed_html)
         if save:
             downloaded.save()
             self.save()
@@ -323,6 +326,11 @@ class DownloadedArticle(models.Model):
     fetch_when = models.DateTimeField(null=True)
     scrape_when = models.DateTimeField(null=True)  # set to signature's modified_when, not scrape time
     canonical_url = models.TextField(null=True)
+
+    # sketches for clustering
+    # array of 100 32-bit ints representing minhash over HTML paths
+    structure_sketch = IntArrayField(null=True)
+
 
     EXTRACTED_FIELDS = EXTRACTED_FIELDS
     headline = models.TextField(null=True)
@@ -428,7 +436,6 @@ class DownloadedArticle(models.Model):
         DiagnosticExtra('noniso', _fmt('!~', ISO_DATE_RE), ('dateline',)),
     ]
     del _fmt
-
 
 def dev_sample_diagnostics():
     sig_counters = defaultdict(Counter)

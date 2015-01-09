@@ -11,6 +11,7 @@ from django.db import transaction
 from likeable.idqueue import main, json_log
 from likeable.models import Article
 from likeable.scraping import (HTTP_ENCODINGS, FetchException, get_mime)
+from likeable.structure import sketch_doc
 
 
 domain_encodings = defaultdict(lambda: list(HTTP_ENCODINGS))
@@ -51,6 +52,9 @@ def download_and_save(args, article_id):
     prior_status = article.fetch_status
 
     if prior_status == 200:
+        if article.downloaded.structure_sketch is None:
+            article.downloaded.structure_sketch = sketch_doc(article.downloaded.parsed_html)
+            json_log(article_id=article_id, status='saved only')
         json_log(article_id=article_id, status='skipped')
         return
 
