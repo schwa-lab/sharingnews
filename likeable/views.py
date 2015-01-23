@@ -186,12 +186,19 @@ def collection(request, sig=None, period=None, start=None, end=None):
                                'dev_sample': dev_sample},
                               context_instance=RequestContext(request))
 
+# XXX: belongs in models
+EXTRACTED_SQL = ' || '.join('CASE WHEN likeable_downloadedarticle.{} IS NOT NULL THEN \'{}\' ELSE \'\' END'.format(*tup) for tup in [
+    ('headline', 'H'),
+    ('dateline', 'D'),
+    ('byline', 'B'),
+    ('body_text', 'T'),
+])
 
 def get_extractor(request, signature, field):
     selector = request.GET.get('selector') or signature.get_selector(field) or ''
     eval_on_load = request.GET.get('autoeval')
     articles = signature.article_set
-    dev_sample = articles.filter(downloaded__in_dev_sample=True)
+    dev_sample = articles.only('id', 'title', 'fb_created', 'url_signature__base_domain', 'downloaded__structure_group').extra(select={'extracted': EXTRACTED_SQL}).filter(downloaded__in_dev_sample=True)
     #domain_sigs = articles.filter(url_signature__base_domain=signature.base_domain).signature_frequencies()
     return render_to_response('extractor.html',
                               {'params': {'sig': signature.signature,

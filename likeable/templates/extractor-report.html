@@ -3,63 +3,6 @@
 {% block content %}
 <h1>Extractor development report</h1>
 
-<style type="text/css">
-div.FixedHeader_Cloned th,
-div.FixedHeader_Cloned td {
-    background-color: #eee !important;
-}
-thead {
-    border-bottom: thin solid;
-    border-top: medium solid;
-}
-thead th {
-    padding: .2em 0;
-}
-tbody {
-    border-bottom: medium solid;
-}
-#report > colgroup > col.even {
-    background: rgba(0,0,200,0.1);
-}
-#report > tbody > tr.even {
-    background: rgba(200,200,0,0.1);
-}
-#report td.numeric {
-    text-align: right;
-}
-#report td.longtext {
-    max-width: 15em;
-    max-height: 1em;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    overflow: hidden;
-}
-#report td.longtext:hover {
-    max-height: none;
-    white-space: inherit;
-    text-overflow: visible;
-    overflow: visible;
-}
-td {
-    padding: 0 .3em;
-}
-tr.search td {
-    padding: 0.2em 1em;
-}
-.ttfont {
-    font-family: monospace;
-}
-thead input {
-    width: 100%;
-    font-size: smaller;
-}
-/*thead .range {
-    background: transparent;
-    border: none;
-    font-size: small;
-}*/
-</style>
-
 <table id="report" class="display">
     <colgroup>
     <col class="odd" />

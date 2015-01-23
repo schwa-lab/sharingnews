@@ -1,1 +1,1 @@
-<a href="{{ article.get_absolute_url|iriencode }}">{{article.title|default:'title missing'}}</a> (<a href="{{article.url|iriencode}}">{{article.url_signature.base_domain}}</a>)
+{% if intable %}<td>{% endif %}<a href="{{ article.get_absolute_url|iriencode }}">{{article.title|default:'title missing'}}</a>{% if intable %}</td><td>{% else %} ({% endif %}<a href="{{article.url|iriencode}}">{{article.url_signature.base_domain}}</a>{% if intable %}</td>{% else %}){% endif %}
