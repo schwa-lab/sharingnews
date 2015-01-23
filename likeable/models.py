@@ -252,7 +252,10 @@ class Article(models.Model):
                                        html=compress_html(content),
                                        fetch_when=timestamp,
                                        canonical_url=canonical)
-        downloaded.structure_sketch = sketch_doc(downloaded.parsed_html)
+        parsed = downloaded.parsed_html
+        if parsed is not None:
+            downloaded.structure_sketch = sketch_doc(parsed)
+        # TODO: set flag that doc is empty
         if save:
             downloaded.save()
             self.save()
@@ -329,8 +332,8 @@ class DownloadedArticle(models.Model):
 
     # sketches for clustering
     # array of 100 32-bit ints representing minhash over HTML paths
-    structure_sketch = IntArrayField(null=True)
-
+    structure_sketch = IntArrayField(null=True, db_index=True)
+    structure_group = models.IntegerField(null=True)
 
     EXTRACTED_FIELDS = EXTRACTED_FIELDS
     headline = models.TextField(null=True)

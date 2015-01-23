@@ -1,6 +1,5 @@
 import itertools
 import re
-import array
 
 from lxml import etree
 import xxhash
@@ -23,7 +22,7 @@ def extract_paths(node, subcat_attribs=('class', 'property', 'itemprop')):
                 yield node.tag, u'[@{}={}]'.format(attr_name, val)
 
 
-def minhash(string_set):
+def minhash_faster_but_less_random(string_set):
     hashers = [xxhash.xxh32(w.encode('utf8')) for w in string_set]
     hashes = np.asarray([h.intdigest() for h in hashers])
     while True:
@@ -32,7 +31,7 @@ def minhash(string_set):
         yield np.min(hashes)
 
 
-def minhash_slower_but_randomer(string_set):
+def minhash(string_set):
     hashers = [xxhash.xxh32(w.encode('utf8')) for w in string_set]
     while True:
         yield min(h.intdigest() for h in hashers)
@@ -47,7 +46,7 @@ def sketch_doc(doc, n_hashes=100):
     paths = ('/'.join(path) for path in set(extract_paths(doc)))
 ###    out = np.empty(n_hashes, dtype='i4')
 ###    out[:] = itertools.islice(minhash(paths), n_hashes)
-    return array.array('i', itertools.islice(minhash(paths), n_hashes))
+    return np.fromiter(minhash(paths), '>u4', n_hashes)
 
 
 def sketch_docs(docs, n_jobs=1, n_hashes=50):

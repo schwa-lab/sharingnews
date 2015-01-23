@@ -53,9 +53,15 @@ def download_and_save(args, article_id):
 
     if prior_status == 200:
         if article.downloaded.structure_sketch is None:
-            article.downloaded.structure_sketch = sketch_doc(article.downloaded.parsed_html)
-            json_log(article_id=article_id, status='saved only')
-        json_log(article_id=article_id, status='skipped')
+            parsed = article.downloaded.parsed_html
+            if parsed is None:
+                json_log(article_id=article_id, status='sketch only: parsed_html is None')
+            else:
+                article.downloaded.structure_sketch = sketch_doc(parsed)
+                article.downloaded.save()
+                json_log(article_id=article_id, status='sketched only')
+        else:
+            json_log(article_id=article_id, status='skipped')
         return
 
     time.sleep(random.random())
