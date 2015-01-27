@@ -104,7 +104,7 @@ READABILITY_SUMMARY_CODE = '((readability.summary))'
 XPATH_CODE = '((xpath))'
 
 
-@lru_cache(maxsize=512)
+@lru_cache(maxsize=1024)
 def _get_extractor(selector):
     if not selector.strip():
         return None, False
@@ -131,16 +131,20 @@ def _get_extractor(selector):
     return extractor, is_text
 
 
-def extract(selector, doc, as_unicode=False):
+def extract(selector, doc=None, as_unicode=False):
     extractions = None
     if not selector:
         return
+    selector = re.sub(r'\(\(comment.*?\)\)', '', selector)
     if selector.startswith(DEFAULT_CODE):
         selector = selector[len(DEFAULT_CODE):].strip()
     for selector in selector.split(';'):  # TODO: handle semicolon in string
         extractor, is_text = _get_extractor(selector.strip())
+        if doc is None:
+            # Just caching
+            continue
         if extractor is None:
-            return None
+            continue
         extractions = extractor(doc)
         if is_text:
             extractions = [_node_text(el) for el in extractions]

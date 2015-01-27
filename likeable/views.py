@@ -14,6 +14,7 @@ from django.http import Http404, HttpResponseBadRequest, HttpResponse
 from django.template import RequestContext
 from django.core.urlresolvers import reverse
 from django.db.models import F
+from sklearn.externals.joblib import Parallel, delayed
 
 from .models import SpideredUrl, Article, DownloadedArticle, UrlSignature, dev_sample_diagnostics
 from .scraping import extract
@@ -241,18 +242,35 @@ def extractor(request, sig, field=DownloadedArticle.EXTRACTED_FIELDS[0]):
         return get_extractor(request, signature, field)
 
 
+def _extractor_eval(selectors, articles):
+    res = []
+    for article in articles:
+        parsed = article.downloaded.parsed_html
+        res.append([extract(selector, parsed, as_unicode=True)
+                    for selector in selectors])
+    return res
+
+
 @json_view
 def extractor_eval(request, sig):
     # allow multiple sels
     selectors = request.GET.getlist('selector')
     # error if none or too many
     signature = get_object_or_404(UrlSignature, signature=sig)
-    dev_sample = signature.article_set.filter(downloaded__in_dev_sample=True).select_related('downloaded')
+    dev_sample = signature.article_set.filter(downloaded__in_dev_sample=True).only('id', 'downloaded__html')
     results = defaultdict(dict)
-    for article in dev_sample:
-        parsed = article.downloaded.parsed_html
-        for selector in selectors:
-            results[selector][article.id] = extract(selector, parsed, as_unicode=True)
+    # FIXME: find more robust way to set n_jobs
+    N_JOBS = 6
+    para = Parallel(n_jobs=N_JOBS, backend='threading', verbose=10)
+    chunk_size = (len(dev_sample) + N_JOBS - 1) // N_JOBS
+    # prepare cache first:
+    for selector in selectors:
+        extract(selector)
+    results = para(delayed(_extractor_eval)(selectors, dev_sample[i * chunk_size:(i + 1) * chunk_size]) for i in range(N_JOBS))
+    results = list(itertools.chain(*results))
+    results = {selector: {article.id: extraction
+                          for article, extraction in zip(dev_sample, sel_results)}
+               for selector, sel_results in zip(selectors, zip(*results))}
     return results
 
 
