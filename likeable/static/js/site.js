@@ -6,11 +6,11 @@ $(window).load(function() {
   	});
   });
 });
-$.fn.enterKey = function (fnc) {
+$.fn.enterKey = function (fnc, mod) {
     return this.each(function () {
         $(this).keypress(function (ev) {
             var keycode = (ev.keyCode ? ev.keyCode : ev.which);
-            if (keycode == '13') {
+            if ((keycode == '13' || keycode == '10') && (!mod || ev[mod + 'Key'])) {
                 fnc.call(this, ev);
             }
         })

@@ -20,9 +20,8 @@ Work on another field:
 <form id="selentry" method="post" role="form">
 {% csrf_token %}
 <div class="form-group">
-	<label for="selector">CSS selector:</label>
-	<input class="form-control" id="selector" name="selector" value="{{selector}}">
-	or <a href="#" id="copy-selector-link">copy <span class="caret"></span></a>
+    <label for="selector">CSS selector:</label> or <a href="#" id="copy-selector-link">copy <span class="caret"></span></a>
+    <textarea class="form-control" id="selector" rows="3" name="selector">{{selector}}</textarea>
 </div>
 
 <div class="btn-group">
@@ -41,19 +40,19 @@ Work on another field:
     <col class="odd"/>
     <col class="even"/>
     </colgroup>
-	<thead><td>Cluster</td><td>Article</td><td>Link</td><td>FB date</td><td>Has</td><td>Matched</td></thead>
-	<tbody>
+    <thead><th>Cluster</th><th>Article</th><th>Link</th><th>FB date</th><th>Has</th><th id="matchedcolhdr">Matched</th></thead>
+    <tbody>
 {% for article in dev_sample %}
 <tr class="deventry devsample{{article.id}}" data-id="{{article.id}}">
-	<td>{% if article.downloaded.structure_group %}{{article.downloaded.structure_group}}{% else %}?{% endif %}</td>
-	{% include '_article_link.html' with article=article intable=1 only %}
-	<td>{{article.fb_created}}</td>
-	<td>{{article.extracted}}</td>
-	<td class="matched"></td>
+    <td>{% if article.downloaded.structure_group %}{{article.downloaded.structure_group}}{% else %}?{% endif %}</td>
+    {% include '_article_link.html' with article=article intable=1 only %}
+    <td>{{article.fb_created}}</td>
+    <td>{{article.extracted}}</td>
+    <td class="matched"></td>
 </tr>
 <!--<li class="deventry devsample{{article.id}} sgroup{{article.downloaded.structure_group}}" data-id="{{article.id}}">{% include '_article_link.html' with article=article only %}</li>-->
 {% endfor %}
-	</tbody>
+    </tbody>
 </table>
 
 {% endblock %}
@@ -77,6 +76,7 @@ Work on another field:
 }
 .matched-content {
   margin: .5em 2em;
+  font-style: italic;
 }
 </style>
 {% endblock %}
@@ -84,35 +84,36 @@ Work on another field:
 {% block js %}
 <script type="text/javascript">
 jQuery.fn.setMatched = function(val) {
-  var el = this.find('.matched').addBack('.matched').attr('data-value', val).text('Matched: ' + val);
+  var el = this.find('.matched').addBack('.matched').attr('data-value', val).text(val);
   return this;
 }
 
 $(document).ready(function() {
-  var table = $('#devsample').DataTable({
+  table = $('#devsample').DataTable({
     pageLength: 100,
-	lengthChange: false,
+    lengthChange: false,
   });
   //<ol class="matched-content"></ol>');
-  $('#selector').enterKey(function(ev){ $('#seltest').click(); ev.preventDefault(); return false; });
+  var doEvaluate = function(ev){ $('#seltest').click(); ev.preventDefault(); return false; };
+  $('#selector').enterKey(doEvaluate, 'ctrl').enterKey(doEvaluate, 'shift');
   $('#selector').select();
 
   $('#seltest').click(function(){
     $('#seltest').prop('disabled', true);
     var selector = $("#selector").val()
-	$('#devsample > tbody > tr').setMatched('?');
-	$('#devsample > tbody > tr').data('matched-content', '');
+    $('#devsample > tbody > tr').setMatched('?');
+    $('#devsample > tbody > tr').data('matched-content', '');
     $.get('{% url 'extractor_eval' params.sig %}',
           {selector: selector},
           function (result) {
             $.each(result[selector], function (article_id, extractions) {
               var entry = $('#devsample .devsample' + article_id);
               entry.setMatched(extractions.length);
-			  var content = $('<ol class="matched-content" />')
+              var content = $('<ol class="matched-content" />')
               for (var i in extractions) {
                 content.append($('<li/>').text(extractions[i]));
               }
-			  entry.data('matched-content', $('<div>').append(content.clone()).html())
+              entry.data('matched-content', $('<div>').append(content.clone()).html())
             });
             $('#seltest').prop('disabled', true);
           },
@@ -125,7 +126,7 @@ $(document).ready(function() {
   });
 
   $('#selector').on("input", function() {
-  	$('#selsave').prop('disabled', false);
+    $('#selsave').prop('disabled', false);
   });
 
   $('#devsample .matched').click(function() {
@@ -133,19 +134,17 @@ $(document).ready(function() {
       return;
     var tr = $(this).closest('.deventry');
     var row = table.row(tr);
-	if ( row.child.isShown() ) {
-		// This row is already open - close it
-		row.child.hide();
-		tr.removeClass('shown');
-	}
-	else {
-		// Open this row
-		console.log(tr.data('matched-content'));
-		var ch = row.child(tr.data('matched-content'));
-		console.log(ch);
-		ch.show();
-		tr.addClass('shown');
-	}
+    if ( row.child.isShown() ) {
+        // This row is already open - close it
+        row.child.hide();
+        tr.removeClass('shown');
+    }
+    else {
+        // Open this row
+        var ch = row.child(tr.data('matched-content'));
+        ch.show();
+        tr.addClass('shown');
+    }
     return;
   });
 
@@ -190,10 +189,27 @@ $(document).ready(function() {
   var saved = false;
   $('#selentry').submit(function(){saved = true;});
   $(window).on('beforeunload', function(){
-    if (!saved && $('#selector').val() != $('#selector').attr('value')) {
+    if (!saved && $('#selector').val() != $('#selector').text()) {
       return "The selector has been changed but not saved."
     }
   });
+
+  $('#matchedcolhdr').append($('<a href="#"> +</a>').click(function() {
+    var toggleAnchor = this;
+    var trs = $(this).closest('table').find('tr');
+    if ($(toggleAnchor).text() == ' +') {
+      trs.find('.matched').click();
+      $(toggleAnchor).text(' –');
+    } else {
+        console.log('!aawsdfas')
+      trs.each(function() {
+        table.row(this).child.hide()
+        $(this).removeClass('shown');
+      });
+      $(toggleAnchor).text(' +');
+    }
+    return false;
+  }));
 
 });
 

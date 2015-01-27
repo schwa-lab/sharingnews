@@ -116,7 +116,8 @@ def collection(request, sig=None, period=None, start=None, end=None):
         articles = articles.filter(fb_created__lt=_parse_month(end)[1])
 
     if sig is None:
-        subdivisions = articles.domain_frequencies()
+        # Tuple extended for signature object included below
+        subdivisions = [tup + (None,) for tup in articles.domain_frequencies()]
         breadcrumbs = []
     elif '/' not in sig:
         # Is just base_domain
@@ -124,7 +125,11 @@ def collection(request, sig=None, period=None, start=None, end=None):
         if sigs.count() == 0:
             raise Http404
         articles = articles.filter(url_signature__in=sigs)
-        subdivisions = articles.signature_frequencies()
+        subdivisions = articles.signature_frequencies(return_id=True)
+        # XXX: Can use only() if necessary
+        lookup = UrlSignature.objects.in_bulk([tup[0] for tup in subdivisions])
+        subdivisions = [(lookup[tup[0]].signature,) + tup[1:] + (lookup[tup[0]],)
+                        for tup in subdivisions]
         breadcrumbs = [None]
     else:
         sig_obj = get_object_or_404(UrlSignature, signature=sig)
@@ -139,9 +144,9 @@ def collection(request, sig=None, period=None, start=None, end=None):
         # append coverage percentage
         tmp = []
         cumtotal = 0
-        for subdiv, count in subdivisions:
+        for subdiv, count, sig_obj in subdivisions:
             cumtotal += count
-            tmp.append((subdiv, count, 100 * cumtotal / N))
+            tmp.append((subdiv, count, 100 * cumtotal / N, sig_obj))
         subdivisions = tmp
 
         target_coverage = 99.9
@@ -197,7 +202,10 @@ EXTRACTED_SQL = ' || '.join('CASE WHEN likeable_downloadedarticle.{} IS NOT NULL
 
 def get_extractor(request, signature, field):
     selector = request.GET.get('selector') or signature.get_selector(field) or ''
-    eval_on_load = request.GET.get('autoeval')
+    if '\n' not in selector:
+        selector = selector.replace(';', ';\n')
+        selector = selector.replace('\n ', '\n')
+    eval_on_load = request.GET.get('autoeval', 'true') != 'false'
     articles = signature.article_set
     dev_sample = articles.only('id', 'title', 'fb_created', 'url_signature__base_domain', 'downloaded__structure_group').extra(select={'extracted': EXTRACTED_SQL}).filter(downloaded__in_dev_sample=True)
     #domain_sigs = articles.filter(url_signature__base_domain=signature.base_domain).signature_frequencies()

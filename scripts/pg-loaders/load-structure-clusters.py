@@ -8,7 +8,7 @@ import django
 from sklearn.externals import joblib
 import numpy as np
 
-from likeable.models import DownloadedArticle
+from likeable.models import DownloadedArticle, UrlSignature
 
 now = datetime.datetime.now
 django.setup()
@@ -35,3 +35,7 @@ for path in args.joblib_dumps:
         label_sketches = [sketches[j] for j in label_inds]
         n_updates = DownloadedArticle.objects.filter(article__url_signature__base_domain=domain, structure_sketch__in=label_sketches).update(structure_group=i + 1)
         print(now(), 'Domain', domain, 'label', label, 'updated', n_updates, 'rows for', len(label_sketches), 'sketches')
+
+    print(now(), 'Updating signature structure groups annotation')
+    UrlSignature.objects.filter(base_domain=domain).update_structure_group_counts()
+    print(now(), 'Done', domain)

@@ -6,6 +6,8 @@ import logging
 import datetime
 import urllib
 from collections import Counter, defaultdict, namedtuple
+import itertools
+import operator
 
 import pytz
 from lxml import etree
@@ -34,6 +36,17 @@ class UrlSignatureQS(models.query.QuerySet):
                    .values_list(field)\
                    .annotate(n=models.Count('pk'))
 
+    def get_structure_group_counts(self, min_freq=5):
+        for sig_id, entries in itertools.groupby(DownloadedArticle.objects.filter(article__url_signature__in=self, structure_group__isnull=False).values_list('article__url_signature', 'structure_group').annotate(n=models.Count('pk')).filter(n__gte=min_freq).order_by('article__url_signature__id', '-n'), operator.itemgetter(0)):
+            yield sig_id, [entry[1:] for entry in entries]
+
+    def update_structure_group_counts(self, up_to=5, min_freq=5):
+        for sig_id, entries in self.get_structure_group_counts(min_freq):
+            groups = [group for group, n in entries[:up_to]]
+            if not groups:
+                groups = None
+            UrlSignature.objects.filter(pk=sig_id).update(structure_groups=','.join(map('{:d}'.format, groups)))
+
 
 class UrlSignatureManager(models.Manager):
     def get_queryset(self):
@@ -61,6 +74,10 @@ class UrlSignature(models.Model):
     base_domain = models.CharField(max_length=50, db_index=True)  # oversized due to broken data :(
 
     modified_when = models.DateTimeField(default=utcnow)  # selectors modified at this timestamp
+
+    # Up to 5 most prominent structure groups with at least 5 entries
+    # XXX: should we store quantity too?
+    structure_groups = models.CommaSeparatedIntegerField(max_length=15, null=True)
 
     # When updating defaults, run makemigrations, and scripts/reextract-defaults.py
     DEFAULT_SELECTORS = {
