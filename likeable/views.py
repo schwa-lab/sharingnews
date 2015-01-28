@@ -5,6 +5,7 @@ import re
 from xml.sax.saxutils import escape as xml_escape
 import random
 import itertools
+import operator
 import io
 import csv
 
@@ -117,7 +118,9 @@ def collection(request, sig=None, period=None, start=None, end=None):
 
     if sig is None:
         # Tuple extended for signature object included below
-        subdivisions = [tup + (None,) for tup in articles.domain_frequencies()]
+        subdivisions = [tup for tup in articles.domain_frequencies()]
+        domain_sigs = {sig.base_domain: sig for sig in UrlSignature.objects.filter(base_domain__in=[tup[0] for tup in subdivisions]).domain_defaults()}
+        subdivisions = [tup + (domain_sigs[tup[0]] if tup[0] else None,) for tup in subdivisions]
         breadcrumbs = []
     elif '/' not in sig:
         # Is just base_domain
@@ -205,9 +208,9 @@ def get_extractor(request, signature, field):
     if '\n' not in selector:
         selector = selector.replace(';', ';\n')
         selector = selector.replace('\n ', '\n')
-    eval_on_load = request.GET.get('autoeval', 'true') != 'false'
-    articles = signature.article_set
-    dev_sample = articles.only('id', 'title', 'fb_created', 'url_signature__base_domain', 'downloaded__structure_group').extra(select={'extracted': EXTRACTED_SQL}).filter(downloaded__in_dev_sample=True)
+    eval_on_load = request.GET.get('autoeval', False)
+    articles = signature.dev_articles
+    dev_sample = _sample(articles.only('id', 'title', 'fb_created', 'url_signature__base_domain', 'downloaded__structure_group').extra(select={'extracted': EXTRACTED_SQL}), stratify='downloaded__structure_group')
     #domain_sigs = articles.filter(url_signature__base_domain=signature.base_domain).signature_frequencies()
     return render_to_response('extractor.html',
                               {'params': {'sig': signature.signature,
@@ -240,7 +243,7 @@ def post_extractor(request, signature, field):
                     '?msg=' + msg)
 
 
-def extractor(request, sig, field=DownloadedArticle.EXTRACTED_FIELDS[0]):
+def extractor(request, sig, field='body_text'):
     if field not in DownloadedArticle.EXTRACTED_FIELDS:
         raise Http404('Field {} unknown. Expected one of {}'.format(field, DownloadedArticle.EXTRACTED_FIELDS))
     signature = get_object_or_404(UrlSignature, signature=sig)
@@ -259,16 +262,44 @@ def _extractor_eval(selectors, articles):
     return res
 
 
+def _sample(entries, n=200, rng=None, stratify=None, stratify_prop=.5):
+    if rng is None:
+        rng = random.Random(42)
+    entries = list(entries.order_by('pk'))
+    if len(entries) > n:
+        if stratify is None:
+            entries = rng.sample(entries, n)
+        else:
+            get = operator.attrgetter(stratify.replace('__', '.'))
+            groups = defaultdict(list)
+            for entry in entries:
+                groups[get(entry)].append(entry)
+            sampled = []
+            n_per_group = max(int(n * stratify_prop) // len(groups), 1)
+            print('n_per_group', n_per_group)
+            for group in groups.values():
+                if len(group) > n_per_group:
+                    sampled.extend(rng.sample(group, n_per_group))
+                else:
+                    sampled.extend(group)
+            remainder = n - len(sampled)
+            if remainder > 0:
+                sampled.extend(rng.sample(set(entries) - set(sampled), remainder))
+            entries = sampled
+
+    return entries
+
+
 @json_view
 def extractor_eval(request, sig):
     # allow multiple sels
     selectors = request.GET.getlist('selector')
     # error if none or too many
     signature = get_object_or_404(UrlSignature, signature=sig)
-    dev_sample = signature.article_set.filter(downloaded__in_dev_sample=True).only('id', 'downloaded__html')
+    dev_sample = _sample(signature.dev_articles.only('id', 'downloaded__html', 'downloaded__structure_group'), stratify='downloaded__structure_group')
     results = defaultdict(dict)
     # FIXME: find more robust way to set n_jobs
-    N_JOBS = 6
+    N_JOBS = min(10, len(dev_sample))
     para = Parallel(n_jobs=N_JOBS, backend='threading', verbose=10)
     chunk_size = (len(dev_sample) + N_JOBS - 1) // N_JOBS
     # prepare cache first:

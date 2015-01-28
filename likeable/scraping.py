@@ -99,6 +99,7 @@ def readability_summarise_tree(tree):
 
 
 DEFAULT_CODE = '<default>'
+DOMAIN_DEFAULT_CODE = '<domain>'
 TEXT_CODE = '((text))'
 READABILITY_SUMMARY_CODE = '((readability.summary))'
 XPATH_CODE = '((xpath))'
@@ -136,6 +137,8 @@ def extract(selector, doc=None, as_unicode=False):
     if not selector:
         return
     selector = re.sub(r'\(\(comment.*?\)\)', '', selector)
+    if selector.startswith(DOMAIN_DEFAULT_CODE):
+        selector = selector[len(DOMAIN_DEFAULT_CODE):].strip()
     if selector.startswith(DEFAULT_CODE):
         selector = selector[len(DEFAULT_CODE):].strip()
     for selector in selector.split(';'):  # TODO: handle semicolon in string

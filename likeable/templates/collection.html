@@ -27,14 +27,31 @@
 
 {% if subdivisions %}
 <h2>Subdivision</h2>
-<table class="table table-striped table-condensed">
-    <thead><tr><th>Frequency</th><th>Cumulative</th><th>Group</th>{% if params.sig %}<th>Structure groups</th>{% endif %}</tr></thead>
+<table id="collection-subdiv" class="table table-striped table-condensed">
+	<thead><tr><th>Frequency</th><th>Cumulative</th><th>Group</th><th>Extractors</th>{% if params.sig %}<th>Structure groups</th>{% endif %}</tr></thead>
     <tbody>
     {% for sig, count, percent, sig_obj in subdivisions %}
-    <tr><td>{{count}}</td><td>{{percent|floatformat:1}}%</td><td><a href="{% url 'collection' sig=sig start=params.start|default:'' end=params.end|default:'' %}">{{sig}}</a></td>{% if sig_obj %}<td>{{sig_obj.structure_groups}}</td>{% endif %}</tr>
+	<tr><td>{{count}}</td><td>{{percent|floatformat:1}}%</td><td class="sig"><a href="{% url 'collection' sig=sig start=params.start|default:'' end=params.end|default:'' %}">{{sig}}</a></td>{% if sig_obj %}<td class="extractor_status">{{sig_obj.status}}</td><td>{{sig_obj.structure_groups}}</td>{% endif %}</tr>
     {% endfor %}
     </tbody>
 </table>
+
+<script type="text/javascript">
+<!--
+$(document).ready(function() {
+  var fields = {H: 'headline', D: 'dateline', B: 'byline', T: 'body_text',
+                h: 'headline', d: 'dateline', b: 'byline', t: 'body_text',}
+  $('#collection-subdiv .extractor_status').each(function () {
+    var sig = $(this).closest('tr').find('.sig').text();
+    var els = $.map($(this).text().split(''), function(c) {
+      return $('<a/>').attr('href', '{% url 'extractor' field='XXX' sig='YYY' %}'.replace('XXX', fields[c]).replace('YYY', sig)).text(c);
+    });
+    console.log(els)
+    $(this).text('').append(els);
+  });
+});
+// -->
+</script>
 {% endif %}
 
 {% endblock %}

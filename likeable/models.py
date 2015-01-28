@@ -18,7 +18,7 @@ from dateutil.parser import parse as parse_date
 from bs4 import UnicodeDammit
 
 from .cleaning import xml_unescape, compress_html, extract_canonical
-from .scraping import extract, DEFAULT_CODE, fetch_with_refresh
+from .scraping import extract, DEFAULT_CODE, DOMAIN_DEFAULT_CODE, fetch_with_refresh
 from .models_helpers import IntArrayField
 from .structure import sketch_doc
 
@@ -47,6 +47,29 @@ class UrlSignatureQS(models.query.QuerySet):
                 groups = None
             UrlSignature.objects.filter(pk=sig_id).update(structure_groups=','.join(map('{:d}'.format, groups)))
 
+    def domain_defaults(self):
+        return self.filter(signature=models.F('base_domain'))
+
+    def has_domain_default(self):
+        """Filter to sigs that have selector defaulting to domain default"""
+        if hasattr(self, '_has_domain_default_q'):
+            return self.filter(self._has_domain_default_q)
+        q = models.Q()
+        for f in EXTRACTED_FIELDS:
+            q |= models.Q(**{f + '_selector__startswith': DOMAIN_DEFAULT_CODE})
+        self._has_domain_default_q = q
+        return self.has_domain_default()
+
+    def has_default(self):
+        """Filter to sigs that have selector defaulting to default"""
+        if hasattr(self, '_has_default_q'):
+            return self.filter(self._has_default_q)
+        q = models.Q()
+        for f in EXTRACTED_FIELDS:
+            q |= models.Q(**{f + '_selector__startswith': DEFAULT_CODE})
+        self._has_default_q = q
+        return self.has_default()
+
 
 class UrlSignatureManager(models.Manager):
     def get_queryset(self):
@@ -54,6 +77,12 @@ class UrlSignatureManager(models.Manager):
 
     def for_base_domain(self, domain):
         return self.filter(base_domain=domain)
+
+    def get_domain_default(self, domain):
+        try:
+            return self.for_base_domain(domain).domain_defaults()[0]
+        except IndexError:
+            return None
 
 
 def _make_extractor(field):
@@ -66,12 +95,19 @@ def _make_extractor(field):
 _empty_doc = etree.fromstring('<x></x>')
 
 
-EXTRACTED_FIELDS = ['headline', 'dateline', 'byline', 'body_text',]# 'body_html']
+EXTRACTED_FIELDS = {'headline': 'H', 'dateline': 'D', 'byline': 'B', 'body_text': 'T',}# 'body_html': 'M'}
 
 class UrlSignature(models.Model):
     objects = UrlSignatureManager()
     signature = models.CharField(max_length=256, unique=True, db_index=True)  # not sure if it's a good idea to use this as a string primary key. would make SpideredUrl big.
     base_domain = models.CharField(max_length=50, db_index=True)  # oversized due to broken data :(
+
+    # HACK: we allow signature==base_domain for special instances that should
+    # not correspond directly to any articles (lacks /s). This allows us to
+    # set default extractors per-domain.
+    @property
+    def is_domain_default(self):
+        return self.base_domain == self.signature
 
     modified_when = models.DateTimeField(default=utcnow)  # selectors modified at this timestamp
 
@@ -101,6 +137,30 @@ class UrlSignature(models.Model):
     media_selector = models.CharField(max_length=1000, null=True,
                                       default=DEFAULT_SELECTORS.get('media'))
 
+    @property
+    def dev_articles(self):
+        if self.is_domain_default:
+            articles = Article.objects.filter(url_signature__in=UrlSignature.objects.for_base_domain(self.base_domain))
+        else:
+            articles = self.article_set
+        return articles.filter(downloaded__in_dev_sample=True)
+
+    @property
+    def status(self):
+        out = ''
+        for field, short in EXTRACTED_FIELDS.items():
+            sel = self.get_selector(field)
+            if sel is None:
+                continue
+            sel = sel.strip()
+            if sel.startswith(DOMAIN_DEFAULT_CODE) or sel.startswith(DEFAULT_CODE):
+                sel = re.sub('^({}|{})+'.format(DOMAIN_DEFAULT_CODE, DEFAULT_CODE), '', sel)
+                if sel.strip():
+                    out += short.lower()
+            else:
+                out += short
+        return out
+
     def get_selector(self, field):
         return getattr(self, field + '_selector')
 
@@ -113,11 +173,26 @@ class UrlSignature(models.Model):
                     updated.append(field)
         return updated
 
+    def update_domain_defaults(self, domain_default=None):
+        if domain_default is None:
+            domain_default = UrlSignature.objects.get_domain_default(self.base_domain)
+        updated = []
+        for field in EXTRACTED_FIELDS:
+            cur_sel = self.get_selector(field)
+            if cur_sel is None or cur_sel.startswith(DOMAIN_DEFAULT_CODE):
+                if self.set_selector(field, DOMAIN_DEFAULT_CODE + (domain_default.get_selector(field) or '')):
+                    updated.append(field)
+        return updated
+
     def set_selector(self, field, value):
         if not value:
             value = None
         if value == getattr(self, field + '_selector'):
             return False
+
+        if value.startswith(DOMAIN_DEFAULT_CODE) and self.is_domain_default:
+            raise ValueError('Domain default signature cannot have '
+                             'selector that defaults to domain default!')
 
         setattr(self, field + '_selector', value)
         # smoke test
@@ -126,7 +201,18 @@ class UrlSignature(models.Model):
         return True
 
     def set_modified(self):
+        self._modified_set = True
         self.modified_when = utcnow()
+
+    def save(self, *args, **kwargs):
+        super(UrlSignature, self).save(*args, **kwargs)
+        if self.is_domain_default and hasattr(self, '_modified_set'):
+            i = 0
+            for sig in UrlSignature.objects.for_base_domain(self.base_domain).has_domain_default():
+                if sig.update_domain_defaults():
+                    sig.save()
+                i += 1
+            logger.info('Updated %d downstream sigs for domain default @%s', i, self.base_domain)
 
     # ?require match zero or one object, except media_selector
     # when changed, rerun over signature dev articles; maybe should store stats with selectors
@@ -144,6 +230,9 @@ class UrlSignature(models.Model):
                        kwargs={'sig': self.signature,
                                'start': '',
                                'end': ''})
+
+    def __repr__(self):
+        return '<UrlSignature: {0.signature} |{0.status}>'.format(self)
 
 
 class ArticleQS(models.query.QuerySet):
