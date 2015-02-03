@@ -123,6 +123,7 @@ class UrlSignature(models.Model):
     DEFAULT_SELECTORS = {
         'headline': DEFAULT_CODE + '((text))[itemprop~="headline"]; ((text))h1; [property~="og:title"]::attr(content)',
         'body_text': DEFAULT_CODE + '((text))((readability.summary))p',
+        'byline': DEFAULT_CODE,
         # there are more variations of the following that could be generated e.g. content attr, text content (worth the cost for non-ISO?)
         'dateline': DEFAULT_CODE + '[property~=datePublished]::attr(datetime); [property~=dateCreated]::attr(datetime); [itemprop~=datePublished]::attr(datetime); [itemprop~=dateCreated]::attr(datetime)',
         #'body_html': DEFAULT_CODE + '((readability.summary))',
@@ -169,24 +170,27 @@ class UrlSignature(models.Model):
         return getattr(self, field + '_selector')
 
     def update_defaults(self):
+        return self._update_defaults(DOMAIN_DEFAULT_CODE, self.DEFAULT_SELECTORS)
+
+    def update_domain_defaults(self, domain_default=None):
+        return self._update_defaults(DOMAIN_DEFAULT_CODE, self.get_backoff(domain_default))
+
+    def _update_defaults(self, prefix, backoffs):
         updated = []
         for field in EXTRACTED_FIELDS:
             cur_sel = self.get_selector(field)
-            if cur_sel is None or cur_sel.startswith(DEFAULT_CODE):
-                if self.set_selector(field, self.DEFAULT_SELECTORS.get(field)):
+            if cur_sel is None or cur_sel.startswith(prefix):
+                if self.set_selector(field, backoffs.get(field, prefix)):
                     updated.append(field)
         return updated
 
-    def update_domain_defaults(self, domain_default=None):
+    def get_backoff(self, domain_default=None):
+        if self.is_domain_default:
+            return self.DEFAULT_SELECTORS
         if domain_default is None:
             domain_default = UrlSignature.objects.get_domain_default(self.base_domain)
-        updated = []
-        for field in EXTRACTED_FIELDS:
-            cur_sel = self.get_selector(field)
-            if cur_sel is None or cur_sel.startswith(DOMAIN_DEFAULT_CODE):
-                if self.set_selector(field, DOMAIN_DEFAULT_CODE + (domain_default.get_selector(field) or '')):
-                    updated.append(field)
-        return updated
+        return {field: DOMAIN_DEFAULT_CODE + (domain_default.get_selector(field) or '')
+                for field in EXTRACTED_FIELDS}
 
     def set_selector(self, field, value):
         if not value:

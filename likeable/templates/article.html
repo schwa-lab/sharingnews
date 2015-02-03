@@ -24,6 +24,7 @@
 	{% if article.fetch_status %}
     <dt>Fetch HTTP status</dt><dd class="{% if article.fetch_status == 200 %}text-success{% elif article.fetch_status %}text-danger{% endif %}">{{article.fetch_status}}</dd>
     <dt>In development sample</dt><dd{% if article.downloaded.in_dev_sample %} class="bg-success"{% endif %}>{{article.downloaded.in_dev_sample}}</dd>
+	<dt>Structure group</dt><dd>{{article.downloaded.structure_group}}</dd>
 	{% endif %}
 </dl>
 

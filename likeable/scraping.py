@@ -132,7 +132,7 @@ def _get_extractor(selector):
     return extractor, is_text
 
 
-def extract(selector, doc=None, as_unicode=False):
+def extract(selector, doc=None, as_unicode=False, return_which=False):
     extractions = None
     if not selector:
         return
@@ -141,7 +141,8 @@ def extract(selector, doc=None, as_unicode=False):
         selector = selector[len(DOMAIN_DEFAULT_CODE):].strip()
     if selector.startswith(DEFAULT_CODE):
         selector = selector[len(DEFAULT_CODE):].strip()
-    for selector in selector.split(';'):  # TODO: handle semicolon in string
+    which = None
+    for i, selector in enumerate(selector.split(';')):  # TODO: handle semicolon in string
         extractor, is_text = _get_extractor(selector.strip())
         if doc is None:
             # Just caching
@@ -158,6 +159,11 @@ def extract(selector, doc=None, as_unicode=False):
                 extractions = '\n'.join(extractions)
                 if not extractions.strip():
                     extractions = None
+            elif not any(e.strip() for e in extractions):
+                extractions = []
         if extractions:
+            which = i
             break
+    if return_which:
+        return extractions, which
     return extractions

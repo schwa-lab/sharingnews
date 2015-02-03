@@ -54,18 +54,36 @@ def article_raw(request, id):
         }
         </style>
         <script type="text/javascript">
+        function _template(str, tpl) {
+          if (!str) return '';
+          var split = str.split(/\s+/).filter(function(s){return s;})
+          var out = '';
+          for (var i = 0; i < split.length; i++) {
+            out += tpl.replace('{}', split[i]);
+          }
+          return out;
+        }
         function compileSelector(node) {
           if (!node)
             return '';
-          var classes = node.className.split(/\s+/);
-          classes = classes.filter(function(s){return s;})
+          var classes = _template(node.className, '.{}');
+          var properties = _template(node.getAttribute('property'), '[property~="{}"]');
+          var itemprop = _template(node.getAttribute('itemprop'), '[itemprop~="{}"]');
           var id = node.getAttribute('id');
           var prefix = node.parentElement ? compileSelector(node.parentElement) + ' > ' : '';
-          return prefix + node.tagName + (classes.length ? '.' + classes.join('.') : '') + (id ? '#' + id : '');
+          return prefix + node.tagName + classes + properties + itemprop + (id ? '#' + id : '');
         }
 
+        var attrs = ['content', 'datetime', 'title', 'rel'];
         document.addEventListener('click', function(evt) {
-          alert(compileSelector(evt.target));
+          var msg = compileSelector(evt.target);
+          for (var i = 0; i < attrs.length; i++) {
+            var val = evt.target.getAttribute(attrs[i]);
+            if (val) {
+              msg += '\\n' + attrs[i] + ' :: ' + val;
+            }
+          }
+          alert(msg);
           return false;
         }, false);
         </script>
@@ -203,11 +221,18 @@ EXTRACTED_SQL = ' || '.join('CASE WHEN likeable_downloadedarticle.{} IS NOT NULL
     ('body_text', 'T'),
 ])
 
-def get_extractor(request, signature, field):
-    selector = request.GET.get('selector') or signature.get_selector(field) or ''
+
+def _space_out(selector):
+    selector = selector or ''
     if '\n' not in selector:
         selector = selector.replace(';', ';\n')
         selector = selector.replace('\n ', '\n')
+    return selector
+
+
+def get_extractor(request, signature, field):
+    selector = _space_out(request.GET.get('selector') or signature.get_selector(field))
+    backoff = _space_out(signature.get_backoff().get(field))
     eval_on_load = request.GET.get('autoeval', False)
     articles = signature.dev_articles
     dev_sample = _sample(articles.only('id', 'title', 'fb_created', 'url_signature__base_domain', 'downloaded__structure_group').extra(select={'extracted': EXTRACTED_SQL}), stratify='downloaded__structure_group')
@@ -218,6 +243,7 @@ def get_extractor(request, signature, field):
                                           'msg': request.GET.get('msg')},
                                'fields': DownloadedArticle.EXTRACTED_FIELDS,
                                'selector': selector,
+                               'backoff': backoff,
                                'eval_on_load': eval_on_load,
                                'dev_sample': dev_sample,
                                #'domain_sigs': domain_sigs,
@@ -257,7 +283,7 @@ def _extractor_eval(selectors, articles):
     res = []
     for article in articles:
         parsed = article.downloaded.parsed_html
-        res.append([extract(selector, parsed, as_unicode=True)
+        res.append([extract(selector, parsed, as_unicode=True, return_which=True)
                     for selector in selectors])
     return res
 

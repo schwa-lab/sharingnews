@@ -10,17 +10,15 @@
 {% endif %}
 
 <nav>
-<label>
 Work on another field:
-</label>
-<select id="fieldsel">{% for field in fields %}<option value="{% url 'extractor' field=field sig=params.sig %}"{% if field == params.field %}selected="selected"{% endif %}>{{field}}</option>{% endfor %}</select>
+{% for field in fields %}{% if field != params.field %}<a href="{% url 'extractor' field=field sig=params.sig %}">{{field}}</a> {% endif %}{% endfor %}
 </nav>
 
 <!-- for now we'll pretend we're only dealing with one field -->
 <form id="selentry" method="post" role="form">
 {% csrf_token %}
 <div class="form-group">
-    <label for="selector">CSS selector:</label> or <a href="#" id="copy-selector-link">copy <span class="caret"></span></a>
+    <label for="selector">CSS selector:</label> or <a href="#" id="backoff-selector-link" title="{{backoff}}">back off</a> or <a href="#" id="copy-selector-link">copy <span class="caret"></span></a>
     <textarea class="form-control" id="selector" rows="3" name="selector">{{selector}}</textarea>
 </div>
 
@@ -40,14 +38,16 @@ Work on another field:
     <col class="odd"/>
     <col class="even"/>
     </colgroup>
-    <thead><th>Cluster</th><th>Article</th><th>Link</th><th>FB date</th><th>Has</th><th id="matchedcolhdr">Matched</th></thead>
+    <thead><th>Article</th><th>D</th><th>WWW</th><th>FB date</th><th>Has</th><th>Cluster</th><th id="matchedcolhdr">Matched</th></thead>
     <tbody>
 {% for article in dev_sample %}
 <tr class="deventry devsample{{article.id}}" data-id="{{article.id}}">
-    <td>{% if article.downloaded.structure_group %}{{article.downloaded.structure_group}}{% else %}?{% endif %}</td>
-    {% include '_article_link.html' with article=article intable=1 only %}
-    <td>{{article.fb_created}}</td>
+    <td><a href="{{ article.get_absolute_url|iriencode }}" title="View {{article.url|iriencode}}">{{article.title|default:'title missing'}}</a></td>
+    <td><a href="{% url 'article_raw' article.id %}?style=selector" title="Debug CSS selectors">Debug</a></td>
+    <td><a href="{{article.url|iriencode}}">{{article.url_signature.base_domain}}</a></td>
+    <td>{{article.fb_created|date:"Y-m-d"}}</td>
     <td>{{article.extracted}}</td>
+    <td class="sgroup">{% if article.downloaded.structure_group %}{{article.downloaded.structure_group}}{% else %}?{% endif %}</td>
     <td class="matched"></td>
 </tr>
 <!--<li class="deventry devsample{{article.id}} sgroup{{article.downloaded.structure_group}}" data-id="{{article.id}}">{% include '_article_link.html' with article=article only %}</li>-->
@@ -83,8 +83,13 @@ Work on another field:
 
 {% block js %}
 <script type="text/javascript">
-jQuery.fn.setMatched = function(val) {
-  var el = this.find('.matched').addBack('.matched').attr('data-value', val).text(val);
+jQuery.fn.setMatched = function(val, which, nColors) {
+  var txt = val;
+  var style = '';
+  if ((which !== null) && (which !== undefined))
+    txt += ' by s' + (which + 1);
+    style = 'background-color: hsla(' + (360 * which / nColors) + ', 50%, 75%, .5)'
+  var el = this.find('.matched').addBack('.matched').attr('data-value', val).text(txt).attr('style', style);
   return this;
 }
 
@@ -92,6 +97,7 @@ $(document).ready(function() {
   table = $('#devsample').DataTable({
     pageLength: 1000,
     lengthChange: false,
+    order: [[5, 'asc']],  // structure group / "cluster"
   });
   //<ol class="matched-content"></ol>');
   var doEvaluate = function(ev){ $('#seltest').click(); ev.preventDefault(); return false; };
@@ -106,9 +112,12 @@ $(document).ready(function() {
     $.get('{% url 'extractor_eval' params.sig %}',
           {selector: selector},
           function (result) {
+            var nSelectors = selector.split(';').length;
             $.each(result[selector], function (article_id, extractions) {
+              which_selector = extractions[1];
+              extractions = extractions[0];
               var entry = $('#devsample .devsample' + article_id);
-              entry.setMatched(extractions.length);
+              entry.setMatched(extractions.length, which_selector, nSelectors);
               var content = $('<ol class="matched-content" />')
               for (var i in extractions) {
                 content.append($('<li/>').text(extractions[i]));
@@ -147,7 +156,15 @@ $(document).ready(function() {
     }
     return;
   });
+  var isModified = function() {
+    return $('#selector').val() != $('#selector').text();
+  }
 
+  $('#backoff-selector-link').click(function() {
+    if (!isModified() || window.confirm('The selector has been changed. Are you sure?')) {
+      $('#selector').val($(this).attr('title'));
+    }
+  });
   $('#copy-selector-link').click(function() {
     if ($('#copy-selector-table')[0]) {
       $('#copy-selector-table').DataTable().destroy(true);
@@ -181,15 +198,9 @@ $(document).ready(function() {
     });
   });
 
-  $('#fieldsel').change(function(){
-    // TODO: error if not saved
-    window.location = $(this).val();
-  });
-
-  var saved = false;
-  $('#selentry').submit(function(){saved = true;});
+  $('#selentry').submit(function(){$('#selector').text($('#selector').val());});
   $(window).on('beforeunload', function(){
-    if (!saved && $('#selector').val() != $('#selector').text()) {
+    if (isModified()) {
       return "The selector has been changed but not saved."
     }
   });
@@ -211,6 +222,18 @@ $(document).ready(function() {
     return false;
   }));
 
+  // HACK: colouring by cluster
+  var sgroups = {};
+  var nSgroups = 0;
+  $('.sgroup').each(function(){
+    var txt = $(this).text();
+    if (sgroups[txt] === undefined)
+      sgroups[txt] = nSgroups++;
+  });
+  $('.sgroup').each(function(){
+    var style = 'background-color: hsla(' + (360 * sgroups[$(this).text()] / nSgroups) + ', 50%, 75%, .5)';
+    $(this).attr('style', style);
+  });
 });
 
 {% if eval_on_load %}
