@@ -85,6 +85,10 @@ class UrlSignatureManager(models.Manager):
             return None
 
 
+def get_domains():
+    return UrlSignature.objects.filter(base_domain__contains='.').values_list('base_domain', flat=True).distinct().order_by('base_domain')
+
+
 def _make_extractor(field):
     def _extractor(self, doc, as_unicode=False):
         return extract(self.get_selector(field), doc, as_unicode)
@@ -234,17 +238,25 @@ class UrlSignature(models.Model):
     def __repr__(self):
         return '<UrlSignature: {0.signature} |{0.status}>'.format(self)
 
+SHARES_FIELDS = ['fb_count_initial', 'fb_count_2h', 'fb_count_1d',
+                 'fb_count_5d', 'fb_count_longterm', 'tw_count_initial',
+                 'tw_count_2h', 'tw_count_1d', 'tw_count_5d',
+                 'tw_count_longterm']
 
 class ArticleQS(models.query.QuerySet):
-    def calc_share_quantiles(self, percentiles=[50, 75, 90, 95, 99]):  #  min_fb_created=None, max_fb_created=None):
-        nonzero_shares = (self.filter(fb_count_longterm__gt=0)
-                              .values_list('fb_count_longterm', flat=True)
-                              .order_by('fb_count_longterm'))
+    def calc_share_quantiles(self, percentiles=[50, 75, 90, 95, 99], shares_field='fb_count_longterm'):  #  min_fb_created=None, max_fb_created=None):
+        nonzero_shares = (self.filter(**{shares_field + '__gt': 0})
+                              .values_list(shares_field, flat=True)
+                              .order_by(shares_field))
         #N = nonzero_shares.count()
         nonzero_shares = list(nonzero_shares)
         N = len(nonzero_shares)
         return [nonzero_shares[int(N * p / 100)]
                 for p in percentiles]
+
+    def with_logs(self, shares_fields=SHARES_FIELDS):
+        new_fields = {'log_' + f: 'LOG("likeable_article"."{}")'.format(f) for f in shares_fields}
+        return self.extra(select=new_fields)
 
     def bin_shares(self, bin_max, field_name='binned_shares', shares_field='fb_count_longterm'):
         cases = ' '.join('WHEN {} <= {} THEN {}'.format(shares_field, int(m), i)
@@ -263,6 +275,19 @@ class ArticleQS(models.query.QuerySet):
     def signature_frequencies(self, return_id=False):
         field = 'url_signature__signature' if not return_id else 'url_signature'
         return self.values_list(field).annotate(count=models.Count('pk')).order_by('-count')
+
+    def for_base_domain(self, domain):
+        return self.filter(url_signature__base_domain=domain)
+
+    def close_scrapes(self, n_days=1):
+        """Filter such that fb_created and sharewars crawling"""
+        # XXX: perhaps should use extra with ABS instead, but how to force joins?
+        # abs(a - b) < 2 ==>  a <= b < 2 + a  or  b <= a < 2 + b
+        d = datetime.timedelta(days=n_days)
+        conds = [models.Q(**{f1 + '__gte': models.F(f2), f1 + '__lt': models.F(f2) + d})
+                 for f1, f2 in [('spider_when', 'fb_created'),
+                                ('fb_created', 'spider_when')]]
+        return self.filter(conds[0] | conds[1])
 
 
 class ArticleManager(models.Manager):
@@ -295,6 +320,7 @@ class Article(models.Model):
     tw_count_5d = models.PositiveIntegerField(null=True)
     tw_count_longterm = models.PositiveIntegerField(null=True)
 
+    spider_when = models.DateTimeField(null=True)
     fetch_status = models.IntegerField(null=True)
     # fetch_when = models.DateTimeField(null=True)
 
@@ -545,6 +571,7 @@ class DownloadedArticle(models.Model):
         DiagnosticExtra('noniso', _fmt('!~', ISO_DATE_RE), ('dateline',)),
     ]
     del _fmt
+
 
 def dev_sample_diagnostics():
     sig_counters = defaultdict(Counter)
