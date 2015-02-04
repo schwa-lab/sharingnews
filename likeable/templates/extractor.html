@@ -28,6 +28,8 @@ Work on another field:
 </div>
 </form>
 
+<div id="match-summary"></div>
+
 <h2>Development sample</h2>
 <table id="devsample" class="display">
     <colgroup>
@@ -106,17 +108,31 @@ $(document).ready(function() {
 
   $('#seltest').click(function(){
     $('#seltest').prop('disabled', true);
+    $('#match-summary-table').DataTable().destroy(true);
     var selector = $("#selector").val()
+    var nSelectors = selector.split(';').length;
     $('#devsample > tbody > tr').setMatched('?');
     $('#devsample > tbody > tr').data('matched-content', '');
     $.get('{% url 'extractor_eval' params.sig %}',
           {selector: selector},
           function (result) {
-            var nSelectors = selector.split(';').length;
+            var summary = {};
+            var increment = function(key, extractions) {
+              if (summary[key] === undefined)
+                summary[key] = [0, 0, 0];
+              summary[key][extractions.length > 1 ? 2 : extractions.length] ++;
+            }
             $.each(result[selector], function (article_id, extractions) {
               which_selector = extractions[1];
               extractions = extractions[0];
               var entry = $('#devsample .devsample' + article_id);
+              var sgroup = entry.find('.sgroup').text();
+              increment('-', extractions);
+              increment(sgroup + '-', extractions);
+              if (which_selector !== null) {
+                increment('-' + which_selector, extractions);
+                increment(sgroup + '-' + which_selector, extractions);
+              }
               entry.setMatched(extractions.length, which_selector, nSelectors);
               var content = $('<ol class="matched-content" />')
               for (var i in extractions) {
@@ -124,7 +140,48 @@ $(document).ready(function() {
               }
               entry.data('matched-content', $('<div>').append(content.clone()).html())
             });
+
             $('#seltest').prop('disabled', true);
+
+            // Update summary table
+            var emptyRow = [''];
+            var columns = [{'title': 'Cluster'}];
+            for (var i = 0; i < nSelectors; i++) {
+                emptyRow.push('');
+                columns.push({'title': 's' + (i + 1)});
+            }
+            columns.push({'title': 'Total'});
+            var rows = {'': emptyRow.slice()}
+            for (var key in summary) {
+              var sgroup = key.split('-')[0];
+              var which = key.split('-')[1];
+              if (!rows[sgroup])
+                rows[sgroup] = emptyRow.slice();
+              var totals = summary[key];
+              var cell = '';
+              var colors = ['red', 'green', 'orange'];
+              for (var i in totals) {
+                if (totals[i])
+                  cell += (cell ? '/' : '') + '<span style="color:' + colors[i] + '">' + totals[i] + '</span>';
+              }
+              rows[sgroup][which === '' ? nSelectors : parseInt(which)] = cell;
+            }
+            var newRows = [];
+            for (var key in rows) {
+                if (key === '') continue;
+                newRows.push([key].concat(rows[key]));
+            }
+            newRows.push(['Total'].concat(rows['']));
+            $('#match-summary').html('<table cellpadding="0" cellspacing="0" border="0" class="display" id="match-summary-table"></table>');
+            $('#match-summary-table').DataTable({
+              data: newRows,
+              columns: columns,
+              paging: false,
+              ordering: false,
+              sorting: [],
+              info: false,
+              filter: false,
+            });
           },
           'json').always(function (){
             $('#seltest').prop('disabled', false);
@@ -182,7 +239,6 @@ $(document).ready(function() {
       // XXX: there must be a nicer way to do this!?
       rowCallback: function(row, data) {
         // click for CSS selector
-        console.log($('td:first', row));
         $('td:first', row).wrapInner($('<a href="#" />').click(function() {
           $('#selector').val($(this).text()).trigger("input");
           table.destroy(true);
@@ -212,7 +268,6 @@ $(document).ready(function() {
       trs.find('.matched').click();
       $(toggleAnchor).text(' –');
     } else {
-        console.log('!aawsdfas')
       trs.each(function() {
         table.row(this).child.hide()
         $(this).removeClass('shown');
