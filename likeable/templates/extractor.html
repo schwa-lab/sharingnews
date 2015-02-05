@@ -69,16 +69,22 @@ Work on another field:
   color: gray;
   cursor: auto;
 }
-.matched[data-value="0"] {
+.matched[data-value="0"], .found0 {
   color: red;
   cursor: auto;
 }
-.matched[data-value="1"] {
+.matched[data-value="1"], .found1 {
   color: green;
+}
+.found2 {
+  color: orange;
 }
 .matched-content {
   margin: .5em 2em;
   font-style: italic;
+}
+#match-summary-table td .summcell {
+  cursor: pointer;
 }
 </style>
 {% endblock %}
@@ -92,6 +98,8 @@ jQuery.fn.setMatched = function(val, which, nColors) {
     txt += ' by s' + (which + 1);
     style = 'background-color: hsla(' + (360 * which / nColors) + ', 50%, 75%, .5)'
   var el = this.find('.matched').addBack('.matched').attr('data-value', val).text(txt).attr('style', style);
+  $(this).attr('data-found', val < 2 ? val : 2);
+  $(this).attr('data-foundby', which);
   return this;
 }
 
@@ -127,6 +135,8 @@ $(document).ready(function() {
               extractions = extractions[0];
               var entry = $('#devsample .devsample' + article_id);
               var sgroup = entry.find('.sgroup').text();
+              // XXX: Do this upon construction
+              entry.attr('data-sgroup', sgroup)
               increment('-', extractions);
               increment(sgroup + '-', extractions);
               if (which_selector !== null) {
@@ -159,10 +169,9 @@ $(document).ready(function() {
                 rows[sgroup] = emptyRow.slice();
               var totals = summary[key];
               var cell = '';
-              var colors = ['red', 'green', 'orange'];
               for (var i in totals) {
                 if (totals[i])
-                  cell += (cell ? '/' : '') + '<span style="color:' + colors[i] + '">' + totals[i] + '</span>';
+                  cell += (cell ? '/' : '') + '<span data-sgroup="'+sgroup+'" data-foundby="'+which+'" data-found="'+i+'" class="summcell found' + i + '">' + totals[i] + '</span>';
               }
               rows[sgroup][which === '' ? nSelectors : parseInt(which)] = cell;
             }
@@ -181,6 +190,23 @@ $(document).ready(function() {
               sorting: [],
               info: false,
               filter: false,
+            })
+            $('#match-summary-table td .summcell').click(function(evt) {
+              // Navigation from summary to deventries
+              var el = $(evt.target);
+              var criteria = [];
+              criteria.push('[data-found=' + el.data('found') + ']');
+              if (el.data('foundby')) {
+                criteria.push('[data-foundby=' + el.data('foundby') + ']');
+              }
+              if (el.data('sgroup')) {
+                criteria.push('[data-sgroup=' + el.data('sgroup') + ']');
+              }
+              if (criteria.length == 0)
+                return;
+              var matching = $('.deventry' + criteria.join(''));
+              $(window).scrollTop($(matching).offset().top);
+              matching.effect('highlight', 'slow');
             });
           },
           'json').always(function (){
