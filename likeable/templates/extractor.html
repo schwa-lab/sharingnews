@@ -235,21 +235,29 @@ $(document).ready(function() {
     var table = $('<table id="copy-selector-table" class="table table-striped" />').insertAfter(this).DataTable({
       // TODO: set field dynamically
       ajax: "{% url 'prior_extractors' field=params.field sig=params.sig %}",
-      order: [[ 3, "desc" ], [1, "desc"]],
+      order: [[ 4, "desc" ], [1, "desc"]],
       // XXX: there must be a nicer way to do this!?
       rowCallback: function(row, data) {
         // click for CSS selector
+        if ($('td:first a', row).length)
+          return;  // already applied
         $('td:first', row).wrapInner($('<a href="#" />').click(function() {
           $('#selector').val($(this).text()).trigger("input");
+          table.destroy(true);
+        }));
+        $('td:nth-child(2)', row).wrapInner($('<a href="#">+</a>').click(function() {
+          var val = $('#selector').val();
+          val = val.replace(/;*\s*$/, ';\n' + $(this).closest('td').prev().text());
+          $('#selector').val(val).trigger("input");
           table.destroy(true);
         }));
       },
       columns: [
         {data: 'selector', title: 'CSS selector'},
+        {data: 'append', title: 'Append'},
         {data: 'overall', title: '#sigs', type: 'num'},
-        {data: 'overall_example', title: 'example', render: renderSig},
+        {data: 'example', title: 'example', render: renderSig},
         {data: 'domain', defaultContent: "0", title: '#sigs in domain', type: 'num'},
-        {data: 'domain_example', defaultContent: "", title: 'example', render: renderSig},
       ],
     });
   });

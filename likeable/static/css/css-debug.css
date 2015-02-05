@@ -1,0 +1,15 @@
+* {
+  border: 1px solid #eee !important;
+  cursor: crosshair !important;
+}
+*:hover {
+  border: 1px solid red !important;
+}
+#cssdebugmetalisting, #cssdebugmetalisting *, #cssdebugmetalisting *:hover {
+  border: none !important;
+  cursor: default !important;
+}
+#cssdebugmetalisting dt {
+  font-family: monospace;
+  margin-top: .2em;
+}

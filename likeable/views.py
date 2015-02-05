@@ -14,6 +14,7 @@ from django.shortcuts import render_to_response, redirect, get_object_or_404
 from django.http import Http404, HttpResponseBadRequest, HttpResponse
 from django.template import RequestContext
 from django.core.urlresolvers import reverse
+from django.templatetags.static import static
 from django.db.models import F
 from sklearn.externals.joblib import Parallel, delayed
 
@@ -43,52 +44,11 @@ def article_raw(request, id):
     if style in ('none', 'selector'):
         html = re.sub(r'(?i)<link[^>]*\brel=(["\']?)stylesheet[^>]*>', '', html)
     if style == 'selector':
-        SELECTOR_CONTENT = '''
-        <style type="text/css">
-        * {
-          border: 1px solid #eee !important;
-          cursor: crosshair !important;
-        }
-        *:hover {
-          border: 1px solid red !important;
-        }
-        </style>
-        <script type="text/javascript">
-        function _template(str, tpl) {
-          if (!str) return '';
-          var split = str.split(/\s+/).filter(function(s){return s;})
-          var out = '';
-          for (var i = 0; i < split.length; i++) {
-            out += tpl.replace('{}', split[i]);
-          }
-          return out;
-        }
-        function compileSelector(node) {
-          if (!node)
-            return '';
-          var classes = _template(node.className, '.{}');
-          var properties = _template(node.getAttribute('property'), '[property~="{}"]');
-          var itemprop = _template(node.getAttribute('itemprop'), '[itemprop~="{}"]');
-          var id = node.getAttribute('id');
-          var prefix = node.parentElement ? compileSelector(node.parentElement) + ' > ' : '';
-          return prefix + node.tagName + classes + properties + itemprop + (id ? '#' + id : '');
-        }
-
-        var attrs = ['content', 'datetime', 'title', 'rel'];
-        document.addEventListener('click', function(evt) {
-          var msg = compileSelector(evt.target);
-          for (var i = 0; i < attrs.length; i++) {
-            var val = evt.target.getAttribute(attrs[i]);
-            if (val) {
-              msg += '\\n' + attrs[i] + ' :: ' + val;
-            }
-          }
-          alert(msg);
-          return false;
-        }, false);
-        </script>
-        '''
-        match = re.search('(?i)</head>', html)
+        SELECTOR_CONTENT = ('<link rel="stylesheet" href="{}">'
+                            '<script type="text/javascript" src="{}"></script>'.format(
+                                request.build_absolute_uri(static('css/css-debug.css')),
+                                request.build_absolute_uri(static('js/css-debug.js'))))
+        match = re.search('(?i)</html>', html)
         if match is not None:
             ins = match.start()
         else:
@@ -349,8 +309,9 @@ def prior_extractors(request, field, sig):
     signatures = UrlSignature.objects.exclude(id=signature.id)
     field += '_selector'
     results = [{'selector': k,
+                'append': '',
                 'overall': v,
-                'overall_example': signatures.filter(**{field: k})[0].signature,
+                'example': signatures.filter(**{field: k})[0].signature,
                 }
                for k, v
                in signatures.all().count_field(field)]
@@ -361,12 +322,15 @@ def prior_extractors(request, field, sig):
         if sel not in domain_mapping:
             continue
         entry['domain'] = domain_mapping[sel]
-        entry['domain_example'] = signatures.filter(**{'base_domain': signature.base_domain,
-                                                       field: sel})[0].signature
+        entry['example'] = signatures.filter(**{'base_domain': signature.base_domain,
+                                                field: sel})[0].signature
 
         for k, v in entry.items():
             if isinstance(v, (str, unicode)):
                 entry[k] = xml_escape(v)
+
+    for entry in results:
+        entry['selector'] = _space_out(entry['selector'])
 
     # TODO: match path but possibly different domain
 
