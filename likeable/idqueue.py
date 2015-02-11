@@ -7,6 +7,8 @@ import argparse
 import logging
 import json
 import traceback
+import time
+import datetime
 
 import pika
 import django
@@ -73,6 +75,7 @@ def main(name, process_cb, argparse_cb=None):
     worker_ap = subs.add_parser('worker')
     worker_ap.set_defaults(app='worker')
     count_ap = subs.add_parser('count')
+    count_ap.add_argument('-i', '--repeat-interval', type=int, metavar='INTERVAL', help='Report count every INTERVAL seconds')
     count_ap.set_defaults(app='count')
     count_ap = subs.add_parser('purge')
     count_ap.set_defaults(app='purge')
@@ -99,7 +102,6 @@ def main(name, process_cb, argparse_cb=None):
             try:
                 worker(channel, args.queue, process_cb, args)
             except pika.exceptions.ConnectionClosed:
-                import time
                 wait = 5
                 print('Attempting to reconnect in', wait, 'seconds', file=sys.stderr)
                 time.sleep(wait)
@@ -107,7 +109,12 @@ def main(name, process_cb, argparse_cb=None):
         elif args.app == 'enqueue':
             enqueue(channel, args.queue, args.infile)
         elif args.app == 'count':
+            if args.repeat_interval is not None:
+                print(datetime.datetime.now(), ':', end=' ')
             print(queue.method.message_count)
+            if args.repeat_interval is not None:
+                time.sleep(args.repeat_interval)
+                continue
         elif args.app == 'purge':
             n = queue.method.message_count
             channel.queue_purge(queue=args.queue)
