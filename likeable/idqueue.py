@@ -53,7 +53,7 @@ def worker(channel, queue, process_cb, args):
     channel.start_consuming()
 
 
-def main(name, process_cb, argparse_cb=None):
+def main(name, process_cb, argparse_cb=None, custom_enqueue=None):
     global logger
     default_log_prefix = os.path.expanduser('~likeable/logs/{0}/'
                                             '{0}-{1}-{2}.log.bz2'
@@ -107,7 +107,10 @@ def main(name, process_cb, argparse_cb=None):
                 time.sleep(wait)
                 continue
         elif args.app == 'enqueue':
-            enqueue(channel, args.queue, args.infile)
+            if custom_enqueue:
+                custom_enqueue(args, channel, args.queue, args.infile)
+            else:
+                enqueue(channel, args.queue, args.infile)
         elif args.app == 'count':
             if args.repeat_interval is not None:
                 print(datetime.datetime.now(), ':', end=' ')
