@@ -195,12 +195,12 @@ $(document).ready(function() {
               // Navigation from summary to deventries
               var el = $(evt.target);
               var criteria = [];
-              criteria.push('[data-found=' + el.data('found') + ']');
+              criteria.push('[data-found="' + el.data('found') + '"]');
               if (el.data('foundby')) {
-                criteria.push('[data-foundby=' + el.data('foundby') + ']');
+                criteria.push('[data-foundby="' + el.data('foundby') + '"]');
               }
               if (el.data('sgroup')) {
-                criteria.push('[data-sgroup=' + el.data('sgroup') + ']');
+                criteria.push('[data-sgroup="' + el.data('sgroup') + '"]');
               }
               if (criteria.length == 0)
                 return;
