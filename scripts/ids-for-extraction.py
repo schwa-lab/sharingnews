@@ -16,5 +16,5 @@ except IndexError:
 
 django.setup()
 q = Q(scrape_when__isnull=True) | Q(scrape_when__lt=F('article__url_signature__modified_when'))
-print(*DownloadedArticle.objects.filter(q).order_by('-in_dev_sample', 'article__url_signature__modified_when').values_list('article_id', flat=True)[:limit], sep='\n')
+print(*DownloadedArticle.objects.filter(q).order_by('-in_dev_sample', 'article__url_signature__modified_when', '-article__fb_count_5d').values_list('article_id', flat=True)[:limit], sep='\n')
 

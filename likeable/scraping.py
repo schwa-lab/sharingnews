@@ -81,13 +81,13 @@ def fetch_with_refresh(url, accept_encodings=HTTP_ENCODINGS, max_delay=20):
 
 
 def get_mime(resp):
-    return resp.headers.get('content-type', '').split(';')[0]
+    return resp.headers.get('content-type', '').split(';')[0].strip().lower()
 
 
 def _node_text(node, _extractor=etree.XPath('.//text() | .//br')):
     if not hasattr(node, 'tag'):
         return unicode(node)
-    return u''.join(re.sub(u'\n|\r| ( +)', '', unicode(el)) if not hasattr(el, 'tag') else u'\n'
+    return u''.join(re.sub(u'[\n\r ]+', ' ', unicode(el)) if not hasattr(el, 'tag') else u'\n'
                     for el in _extractor(node)).strip()
 
 

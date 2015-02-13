@@ -6,9 +6,12 @@
 	<li><a href="{% url 'article_raw' article.id %}?style=selector">View with CSS selectors</a></li>
 </ul>
 <h2>Extracted fields</h2>
+{% if article.downloaded.needs_extraction %}
+<p class="bg-warning">The extraction rules have been modified since this article was last processed. If extraction workers are running, these fields should eventually be re-extracted (but may not change the result).</p>
+{% endif %}
 <dl class="dl-horizontal">
 {% for field in extracted_fields %}
-  <dt><tt><a href="{% url 'extractor' field=field sig=article.url_signature.signature %}" title="Develop selector for this field/signature">{{field}}</a></tt></dt>
+  <dt><tt><a href="{% url 'extractor' field=field sig=article.url_signature.signature %}" title="Develop selector for this field/signature. Currently {{article.url_signature.all_selectors|getattr:field}}">{{field}}</a></tt></dt>
   {% if article.downloaded|getattr:field %}<dd><pre>{{article.downloaded|getattr:field}}</pre></dd>{% else %}<dd>&mdash;</dd>{% endif %}
 {% endfor %}
 </dl>

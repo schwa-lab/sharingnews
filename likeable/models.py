@@ -15,10 +15,9 @@ from readability import readability
 from django.db import models
 from django.core.urlresolvers import reverse
 from dateutil.parser import parse as parse_date
-from bs4 import UnicodeDammit
 
-from .cleaning import xml_unescape, compress_html, extract_canonical
-from .scraping import extract, DEFAULT_CODE, DOMAIN_DEFAULT_CODE, fetch_with_refresh
+from .cleaning import xml_unescape, compress_html, extract_canonical, unicode_from_www
+from .scraping import extract, DEFAULT_CODE, DOMAIN_DEFAULT_CODE, fetch_with_refresh, get_mime
 from .models_helpers import IntArrayField
 from .structure import sketch_doc
 
@@ -169,8 +168,13 @@ class UrlSignature(models.Model):
     def get_selector(self, field):
         return getattr(self, field + '_selector')
 
+    @property
+    def all_selectors(self):
+        # useful in templates
+        return {field: self.get_selector(field) for field in EXTRACTED_FIELDS}
+
     def update_defaults(self):
-        return self._update_defaults(DOMAIN_DEFAULT_CODE, self.DEFAULT_SELECTORS)
+        return self._update_defaults(DEFAULT_CODE, self.DEFAULT_SELECTORS)
 
     def update_domain_defaults(self, domain_default=None):
         return self._update_defaults(DOMAIN_DEFAULT_CODE, self.get_backoff(domain_default))
@@ -326,6 +330,13 @@ class Article(models.Model):
 
     spider_when = models.DateTimeField(null=True)
     fetch_status = models.IntegerField(null=True)
+    # Special values of fetch_status:
+    CUSTOM_FETCH_STATUS = {
+        'bad content type': -111,
+    }
+    _accept_mime = {'text/html', 'application/xml', 'text/xml'}.__contains__  # accept without note
+    _reject_mime = re.compile('^(application/pdf$|image/|audio/|video/)').match  # accept without note
+
     # fetch_when = models.DateTimeField(null=True)
 
     ### From FB id lookup
@@ -351,7 +362,7 @@ class Article(models.Model):
         return reverse('likeable.views.article', kwargs={'id': self.id})
 
     def download(self, force=False, save=True, accept_encodings=None):
-        if self.fetch_status == 200 and self.downloaded is not None:
+        if self.fetch_status == 200 and self.downloaded is not None:  # FIXME: this second cond'n will raise an error
             if force:
                 self.fetch_status = None
                 self.downloaded.delete()
@@ -368,24 +379,28 @@ class Article(models.Model):
                 self.save()
             return None, hops
 
-        # TODO: mime check?
+        mime = get_mime(response)
+        if not mime:
+            logger.warning('No MIME when fetching', self)
+        elif self._accept_mime(mime):
+            pass
+        elif self._reject_mime(mime):
+            self.fetch_status = self.CUSTOM_FETCH_STATUS['bad content type']
+            if save:
+                self.save()
+            return None, hops
+        else:
+            logger.warning('Unknown MIME {!r} when fetching {}'.format(mime, self))
 
-        content = response.content  # get content, interpret as unicode
-        override_encodings = ([response.encoding]
-                              if response.encoding is not None else [])
-        ud = UnicodeDammit(content, override_encodings=override_encodings,
-                           is_html=True)
-        if ud.unicode_markup is None:
-            raise UnicodeDecodeError('UnicodeDammit failed for '
-                                     '{}'.format(self.id))
-        content = ud.unicode_markup
-
+        content = unicode_from_www(response)
         canonical = extract_canonical(content)
         if canonical == self.url:
             canonical = None
 
+        content = compress_html(content)
+
         downloaded = DownloadedArticle(article=self,
-                                       html=compress_html(content),
+                                       html=content,
                                        fetch_when=timestamp,
                                        canonical_url=canonical)
         parsed = downloaded.parsed_html
@@ -396,6 +411,9 @@ class Article(models.Model):
             downloaded.save()
             self.save()
         return self.downloaded, hops
+
+    def __repr__(self):
+        return '<Article {}@{}>'.format(self.id, self.url)
 
     class Meta:
         index_together = [
@@ -465,6 +483,13 @@ class DownloadedArticle(models.Model):
     fetch_when = models.DateTimeField(null=True)
     scrape_when = models.DateTimeField(null=True)  # set to signature's modified_when, not scrape time
     canonical_url = models.TextField(null=True)
+
+    @property
+    def needs_extraction(self):
+        sig_modified = self.article.url_signature.modified_when
+        if sig_modified is None:
+            return False
+        return self.scrape_when is None or self.scrape_when <= sig_modified
 
     # sketches for clustering
     # array of 100 32-bit ints representing minhash over HTML paths
