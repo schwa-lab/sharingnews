@@ -18,7 +18,7 @@ domain_encodings = defaultdict(lambda: list(HTTP_ENCODINGS))
 
 
 def _save_log(article, prior_status, hops, exc):
-    status = 'exception' if exc is not None else hops[-1].status_code
+    status = 'exception' if exc is not None else article.fetch_status
     reqs = [{'status': hop.status_code,
              'url': hop.url,
              'mime': get_mime(hop),

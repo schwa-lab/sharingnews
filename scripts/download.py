@@ -5,6 +5,9 @@ Downloads URLs given file containing:
     path\turl
 
 on each line.
+
+
+DEPRECATED
 """
 from __future__ import print_function
 from collections import defaultdict

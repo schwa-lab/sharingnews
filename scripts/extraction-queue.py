@@ -20,7 +20,7 @@ def extract(args, article_id):
     extract.count += 1
 
     try:
-        downloaded = DownloadedArticle.objects.select_related('article__signature') \
+        downloaded = DownloadedArticle.objects.select_related('article__url_signature') \
                                       .defer(*DEST_FIELDS) \
                                       .get(article_id=article_id)
     except DownloadedArticle.DoesNotExist:
@@ -28,9 +28,12 @@ def extract(args, article_id):
         return
 
     signature = downloaded.article.url_signature
+    if signature is None:
+        json_log(article_id=article_id, status='no signature assigned',
+                 exception='no signature')
+        return
 
-    if downloaded.scrape_when is not None and \
-       downloaded.scrape_when > signature.modified_when:
+    if not downloaded.needs_extraction:
         json_log(article_id=article_id, status='already marked clean')
         return
 

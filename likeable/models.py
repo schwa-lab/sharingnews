@@ -15,10 +15,9 @@ from readability import readability
 from django.db import models
 from django.core.urlresolvers import reverse
 from dateutil.parser import parse as parse_date
-from bs4 import UnicodeDammit
 
-from .cleaning import xml_unescape, compress_html, extract_canonical
-from .scraping import extract, DEFAULT_CODE, DOMAIN_DEFAULT_CODE, fetch_with_refresh
+from .cleaning import xml_unescape, compress_html, extract_canonical, unicode_from_www
+from .scraping import extract, DEFAULT_CODE, DOMAIN_DEFAULT_CODE, fetch_with_refresh, get_mime
 from .models_helpers import IntArrayField
 from .structure import sketch_doc
 
@@ -85,6 +84,10 @@ class UrlSignatureManager(models.Manager):
             return None
 
 
+def get_domains():
+    return UrlSignature.objects.filter(base_domain__contains='.').values_list('base_domain', flat=True).distinct().order_by('base_domain')
+
+
 def _make_extractor(field):
     def _extractor(self, doc, as_unicode=False):
         return extract(self.get_selector(field), doc, as_unicode)
@@ -119,6 +122,7 @@ class UrlSignature(models.Model):
     DEFAULT_SELECTORS = {
         'headline': DEFAULT_CODE + '((text))[itemprop~="headline"]; ((text))h1; [property~="og:title"]::attr(content)',
         'body_text': DEFAULT_CODE + '((text))((readability.summary))p',
+        'byline': DEFAULT_CODE,
         # there are more variations of the following that could be generated e.g. content attr, text content (worth the cost for non-ISO?)
         'dateline': DEFAULT_CODE + '[property~=datePublished]::attr(datetime); [property~=dateCreated]::attr(datetime); [itemprop~=datePublished]::attr(datetime); [itemprop~=dateCreated]::attr(datetime)',
         #'body_html': DEFAULT_CODE + '((readability.summary))',
@@ -164,25 +168,33 @@ class UrlSignature(models.Model):
     def get_selector(self, field):
         return getattr(self, field + '_selector')
 
+    @property
+    def all_selectors(self):
+        # useful in templates
+        return {field: self.get_selector(field) for field in EXTRACTED_FIELDS}
+
     def update_defaults(self):
+        return self._update_defaults(DEFAULT_CODE, self.DEFAULT_SELECTORS)
+
+    def update_domain_defaults(self, domain_default=None):
+        return self._update_defaults(DOMAIN_DEFAULT_CODE, self.get_backoff(domain_default))
+
+    def _update_defaults(self, prefix, backoffs):
         updated = []
         for field in EXTRACTED_FIELDS:
             cur_sel = self.get_selector(field)
-            if cur_sel is None or cur_sel.startswith(DEFAULT_CODE):
-                if self.set_selector(field, self.DEFAULT_SELECTORS.get(field)):
+            if cur_sel is None or cur_sel.startswith(prefix):
+                if self.set_selector(field, backoffs.get(field, prefix)):
                     updated.append(field)
         return updated
 
-    def update_domain_defaults(self, domain_default=None):
+    def get_backoff(self, domain_default=None):
+        if self.is_domain_default:
+            return self.DEFAULT_SELECTORS
         if domain_default is None:
             domain_default = UrlSignature.objects.get_domain_default(self.base_domain)
-        updated = []
-        for field in EXTRACTED_FIELDS:
-            cur_sel = self.get_selector(field)
-            if cur_sel is None or cur_sel.startswith(DOMAIN_DEFAULT_CODE):
-                if self.set_selector(field, DOMAIN_DEFAULT_CODE + (domain_default.get_selector(field) or '')):
-                    updated.append(field)
-        return updated
+        return {field: DOMAIN_DEFAULT_CODE + (domain_default.get_selector(field) or '')
+                for field in EXTRACTED_FIELDS}
 
     def set_selector(self, field, value):
         if not value:
@@ -234,17 +246,25 @@ class UrlSignature(models.Model):
     def __repr__(self):
         return '<UrlSignature: {0.signature} |{0.status}>'.format(self)
 
+SHARES_FIELDS = ['fb_count_initial', 'fb_count_2h', 'fb_count_1d',
+                 'fb_count_5d', 'fb_count_longterm', 'tw_count_initial',
+                 'tw_count_2h', 'tw_count_1d', 'tw_count_5d',
+                 'tw_count_longterm']
 
 class ArticleQS(models.query.QuerySet):
-    def calc_share_quantiles(self, percentiles=[50, 75, 90, 95, 99]):  #  min_fb_created=None, max_fb_created=None):
-        nonzero_shares = (self.filter(fb_count_longterm__gt=0)
-                              .values_list('fb_count_longterm', flat=True)
-                              .order_by('fb_count_longterm'))
+    def calc_share_quantiles(self, percentiles=[50, 75, 90, 95, 99], shares_field='fb_count_longterm'):  #  min_fb_created=None, max_fb_created=None):
+        nonzero_shares = (self.filter(**{shares_field + '__gt': 0})
+                              .values_list(shares_field, flat=True)
+                              .order_by(shares_field))
         #N = nonzero_shares.count()
         nonzero_shares = list(nonzero_shares)
         N = len(nonzero_shares)
         return [nonzero_shares[int(N * p / 100)]
                 for p in percentiles]
+
+    def with_logs(self, shares_fields=SHARES_FIELDS):
+        new_fields = {'log_' + f: 'LOG("likeable_article"."{}")'.format(f) for f in shares_fields}
+        return self.extra(select=new_fields)
 
     def bin_shares(self, bin_max, field_name='binned_shares', shares_field='fb_count_longterm'):
         cases = ' '.join('WHEN {} <= {} THEN {}'.format(shares_field, int(m), i)
@@ -263,6 +283,19 @@ class ArticleQS(models.query.QuerySet):
     def signature_frequencies(self, return_id=False):
         field = 'url_signature__signature' if not return_id else 'url_signature'
         return self.values_list(field).annotate(count=models.Count('pk')).order_by('-count')
+
+    def for_base_domain(self, domain):
+        return self.filter(url_signature__base_domain=domain)
+
+    def close_scrapes(self, n_days=1):
+        """Filter such that fb_created and sharewars crawling"""
+        # XXX: perhaps should use extra with ABS instead, but how to force joins?
+        # abs(a - b) < 2 ==>  a <= b < 2 + a  or  b <= a < 2 + b
+        d = datetime.timedelta(days=n_days)
+        conds = [models.Q(**{f1 + '__gte': models.F(f2), f1 + '__lt': models.F(f2) + d})
+                 for f1, f2 in [('spider_when', 'fb_created'),
+                                ('fb_created', 'spider_when')]]
+        return self.filter(conds[0] | conds[1])
 
 
 class ArticleManager(models.Manager):
@@ -295,7 +328,15 @@ class Article(models.Model):
     tw_count_5d = models.PositiveIntegerField(null=True)
     tw_count_longterm = models.PositiveIntegerField(null=True)
 
+    spider_when = models.DateTimeField(null=True)
     fetch_status = models.IntegerField(null=True)
+    # Special values of fetch_status:
+    CUSTOM_FETCH_STATUS = {
+        'bad content type': -111,
+    }
+    _accept_mime = {'text/html', 'application/xml', 'text/xml'}.__contains__  # accept without note
+    _reject_mime = re.compile('^(application/pdf$|image/|audio/|video/)').match  # accept without note
+
     # fetch_when = models.DateTimeField(null=True)
 
     ### From FB id lookup
@@ -321,7 +362,7 @@ class Article(models.Model):
         return reverse('likeable.views.article', kwargs={'id': self.id})
 
     def download(self, force=False, save=True, accept_encodings=None):
-        if self.fetch_status == 200 and self.downloaded is not None:
+        if self.fetch_status == 200 and self.downloaded is not None:  # FIXME: this second cond'n will raise an error
             if force:
                 self.fetch_status = None
                 self.downloaded.delete()
@@ -338,24 +379,28 @@ class Article(models.Model):
                 self.save()
             return None, hops
 
-        # TODO: mime check?
+        mime = get_mime(response)
+        if not mime:
+            logger.warning('No MIME when fetching', self)
+        elif self._accept_mime(mime):
+            pass
+        elif self._reject_mime(mime):
+            self.fetch_status = self.CUSTOM_FETCH_STATUS['bad content type']
+            if save:
+                self.save()
+            return None, hops
+        else:
+            logger.warning('Unknown MIME {!r} when fetching {}'.format(mime, self))
 
-        content = response.content  # get content, interpret as unicode
-        override_encodings = ([response.encoding]
-                              if response.encoding is not None else [])
-        ud = UnicodeDammit(content, override_encodings=override_encodings,
-                           is_html=True)
-        if ud.unicode_markup is None:
-            raise UnicodeDecodeError('UnicodeDammit failed for '
-                                     '{}'.format(self.id))
-        content = ud.unicode_markup
-
+        content = unicode_from_www(response)
         canonical = extract_canonical(content)
         if canonical == self.url:
             canonical = None
 
+        content = compress_html(content)
+
         downloaded = DownloadedArticle(article=self,
-                                       html=compress_html(content),
+                                       html=content,
                                        fetch_when=timestamp,
                                        canonical_url=canonical)
         parsed = downloaded.parsed_html
@@ -366,6 +411,9 @@ class Article(models.Model):
             downloaded.save()
             self.save()
         return self.downloaded, hops
+
+    def __repr__(self):
+        return '<Article {}@{}>'.format(self.id, self.url)
 
     class Meta:
         index_together = [
@@ -435,6 +483,13 @@ class DownloadedArticle(models.Model):
     fetch_when = models.DateTimeField(null=True)
     scrape_when = models.DateTimeField(null=True)  # set to signature's modified_when, not scrape time
     canonical_url = models.TextField(null=True)
+
+    @property
+    def needs_extraction(self):
+        sig_modified = self.article.url_signature.modified_when
+        if sig_modified is None:
+            return False
+        return self.scrape_when is None or self.scrape_when <= sig_modified
 
     # sketches for clustering
     # array of 100 32-bit ints representing minhash over HTML paths
@@ -545,6 +600,7 @@ class DownloadedArticle(models.Model):
         DiagnosticExtra('noniso', _fmt('!~', ISO_DATE_RE), ('dateline',)),
     ]
     del _fmt
+
 
 def dev_sample_diagnostics():
     sig_counters = defaultdict(Counter)

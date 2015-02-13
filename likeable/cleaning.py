@@ -4,6 +4,7 @@ import urlparse
 import urllib
 from xml.sax.saxutils import escape as xml_escape
 import HTMLParser
+from bs4 import UnicodeDammit
 xml_unescape = HTMLParser.HTMLParser().unescape
 
 
@@ -150,7 +151,7 @@ def url_as_diff(new, old):
     return out
 
 
-SCRIPT_STYLE_RE = re.compile(r'<(script|style)\b.*?</\1>', re.DOTALL)
+SCRIPT_STYLE_RE = re.compile(r'<(script|style|iframe)\b.*?</\1>', re.DOTALL)
 WHITESPACE_RE = re.compile(r'[ \t]*(\n)[ \t]*(\n?)\s*', re.DOTALL)
 
 
@@ -186,3 +187,20 @@ def insert_base_href(html, url):
         html = re.sub(r'(?i)<base\b[^>]*>', '', html)
     html = re.sub('(<head[^>]*>)', r'\1<base href="{}">'.format(xml_escape(url)), html)
     return html
+
+
+def unicode_from_www(response):
+    override_encodings = []
+    # Want different priorities to UnicodeDammit
+    if 'content-type' in response.headers and ';' in response.headers['content-type']:
+        override_encodings.append(response.encoding)
+    match = re.search('(?i)<meta[^>]*http-equiv="content-type"[^>]*>', response.content)
+    if match and ';' in match.group():
+        # Ignore HTTP encoding
+        override_encodings = []
+    ud = UnicodeDammit(response.content, override_encodings=override_encodings,
+                       is_html=True)
+    if ud.unicode_markup is None:
+        raise UnicodeDecodeError('UnicodeDammit failed for '
+                                 '{}'.format(self.id))
+    return ud.unicode_markup

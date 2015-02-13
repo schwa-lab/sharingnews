@@ -38,9 +38,9 @@ SELECT blob->>'_id', (blob->'og_object'->>'id')::bigint, blob->'og_object'->>'ur
 SELECT * FROM articletmp$$ WHERE char_length(title) > 1000;
 
 \\echo \`date\`
-EXPLAIN ANALYZE INSERT INTO likeable_article (id, url, fb_updated, fb_type, fb_has_title, title, description, fb_count_longterm, url_signature_id)
-	SELECT DISTINCT ON (id) t.id, t.url, fb_updated, fb_type, title IS NOT NULL, title, description, fb_count_longterm, url_signature_id
-    FROM articletmp$$ t LEFT JOIN likeable_spideredurl s ON t.url = s.url
+EXPLAIN ANALYZE INSERT INTO likeable_article (id, url, spider_when, fb_updated, fb_type, fb_has_title, title, description, fb_count_longterm, url_signature_id)
+	SELECT DISTINCT ON (id) t.id, t.url, swu."when", fb_updated, fb_type, title IS NOT NULL, title, description, fb_count_longterm, url_signature_id
+    FROM articletmp$$ t LEFT JOIN likeable_spideredurl s ON t.url = s.url LEFT JOIN likeable_sharewarsurl swu ON swu.spidered_id =  s.id
 	WHERE t.id IS NOT NULL
 	AND t.url IS NOT NULL
 	AND NOT EXISTS (SELECT 1 FROM likeable_article WHERE likeable_article.id = t.id)

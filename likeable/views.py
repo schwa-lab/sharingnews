@@ -14,6 +14,7 @@ from django.shortcuts import render_to_response, redirect, get_object_or_404
 from django.http import Http404, HttpResponseBadRequest, HttpResponse
 from django.template import RequestContext
 from django.core.urlresolvers import reverse
+from django.templatetags.static import static
 from django.db.models import F
 from sklearn.externals.joblib import Parallel, delayed
 
@@ -43,34 +44,11 @@ def article_raw(request, id):
     if style in ('none', 'selector'):
         html = re.sub(r'(?i)<link[^>]*\brel=(["\']?)stylesheet[^>]*>', '', html)
     if style == 'selector':
-        SELECTOR_CONTENT = '''
-        <style type="text/css">
-        * {
-          border: 1px solid #eee !important;
-          cursor: crosshair !important;
-        }
-        *:hover {
-          border: 1px solid red !important;
-        }
-        </style>
-        <script type="text/javascript">
-        function compileSelector(node) {
-          if (!node)
-            return '';
-          var classes = node.className.split(/\s+/);
-          classes = classes.filter(function(s){return s;})
-          var id = node.getAttribute('id');
-          var prefix = node.parentElement ? compileSelector(node.parentElement) + ' > ' : '';
-          return prefix + node.tagName + (classes.length ? '.' + classes.join('.') : '') + (id ? '#' + id : '');
-        }
-
-        document.addEventListener('click', function(evt) {
-          alert(compileSelector(evt.target));
-          return false;
-        }, false);
-        </script>
-        '''
-        match = re.search('(?i)</head>', html)
+        SELECTOR_CONTENT = ('<link rel="stylesheet" href="{}">'
+                            '<script type="text/javascript" src="{}"></script>'.format(
+                                request.build_absolute_uri(static('css/css-debug.css')),
+                                request.build_absolute_uri(static('js/css-debug.js'))))
+        match = re.search('(?i)</html>', html)
         if match is not None:
             ins = match.start()
         else:
@@ -203,11 +181,18 @@ EXTRACTED_SQL = ' || '.join('CASE WHEN likeable_downloadedarticle.{} IS NOT NULL
     ('body_text', 'T'),
 ])
 
-def get_extractor(request, signature, field):
-    selector = request.GET.get('selector') or signature.get_selector(field) or ''
+
+def _space_out(selector):
+    selector = selector or ''
     if '\n' not in selector:
         selector = selector.replace(';', ';\n')
         selector = selector.replace('\n ', '\n')
+    return selector
+
+
+def get_extractor(request, signature, field):
+    selector = _space_out(request.GET.get('selector') or signature.get_selector(field))
+    backoff = _space_out(signature.get_backoff().get(field))
     eval_on_load = request.GET.get('autoeval', False)
     articles = signature.dev_articles
     dev_sample = _sample(articles.only('id', 'title', 'fb_created', 'url_signature__base_domain', 'downloaded__structure_group').extra(select={'extracted': EXTRACTED_SQL}), stratify='downloaded__structure_group')
@@ -218,6 +203,7 @@ def get_extractor(request, signature, field):
                                           'msg': request.GET.get('msg')},
                                'fields': DownloadedArticle.EXTRACTED_FIELDS,
                                'selector': selector,
+                               'backoff': backoff,
                                'eval_on_load': eval_on_load,
                                'dev_sample': dev_sample,
                                #'domain_sigs': domain_sigs,
@@ -257,7 +243,7 @@ def _extractor_eval(selectors, articles):
     res = []
     for article in articles:
         parsed = article.downloaded.parsed_html
-        res.append([extract(selector, parsed, as_unicode=True)
+        res.append([extract(selector, parsed, as_unicode=True, return_which=True)
                     for selector in selectors])
     return res
 
@@ -323,8 +309,9 @@ def prior_extractors(request, field, sig):
     signatures = UrlSignature.objects.exclude(id=signature.id)
     field += '_selector'
     results = [{'selector': k,
+                'append': '',
                 'overall': v,
-                'overall_example': signatures.filter(**{field: k})[0].signature,
+                'example': signatures.filter(**{field: k})[0].signature,
                 }
                for k, v
                in signatures.all().count_field(field)]
@@ -335,12 +322,15 @@ def prior_extractors(request, field, sig):
         if sel not in domain_mapping:
             continue
         entry['domain'] = domain_mapping[sel]
-        entry['domain_example'] = signatures.filter(**{'base_domain': signature.base_domain,
-                                                       field: sel})[0].signature
+        entry['example'] = signatures.filter(**{'base_domain': signature.base_domain,
+                                                field: sel})[0].signature
 
         for k, v in entry.items():
             if isinstance(v, (str, unicode)):
                 entry[k] = xml_escape(v)
+
+    for entry in results:
+        entry['selector'] = _space_out(entry['selector'])
 
     # TODO: match path but possibly different domain
 

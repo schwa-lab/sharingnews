@@ -10,17 +10,15 @@
 {% endif %}
 
 <nav>
-<label>
 Work on another field:
-</label>
-<select id="fieldsel">{% for field in fields %}<option value="{% url 'extractor' field=field sig=params.sig %}"{% if field == params.field %}selected="selected"{% endif %}>{{field}}</option>{% endfor %}</select>
+{% for field in fields %}{% if field != params.field %}<a href="{% url 'extractor' field=field sig=params.sig %}">{{field}}</a> {% endif %}{% endfor %}
 </nav>
 
 <!-- for now we'll pretend we're only dealing with one field -->
 <form id="selentry" method="post" role="form">
 {% csrf_token %}
 <div class="form-group">
-    <label for="selector">CSS selector:</label> or <a href="#" id="copy-selector-link">copy <span class="caret"></span></a>
+    <label for="selector">CSS selector:</label> or <a href="#" id="backoff-selector-link" title="{{backoff}}">back off</a> or <a href="#" id="copy-selector-link">copy <span class="caret"></span></a>
     <textarea class="form-control" id="selector" rows="3" name="selector">{{selector}}</textarea>
 </div>
 
@@ -29,6 +27,8 @@ Work on another field:
 <input class="btn btn-success" type="submit" id="selsave" disabled="true" value="Save">
 </div>
 </form>
+
+<div id="match-summary"></div>
 
 <h2>Development sample</h2>
 <table id="devsample" class="display">
@@ -40,14 +40,16 @@ Work on another field:
     <col class="odd"/>
     <col class="even"/>
     </colgroup>
-    <thead><th>Cluster</th><th>Article</th><th>Link</th><th>FB date</th><th>Has</th><th id="matchedcolhdr">Matched</th></thead>
+    <thead><th>Article</th><th>D</th><th>WWW</th><th>FB date</th><th>Has</th><th>Cluster</th><th id="matchedcolhdr">Matched</th></thead>
     <tbody>
 {% for article in dev_sample %}
 <tr class="deventry devsample{{article.id}}" data-id="{{article.id}}">
-    <td>{% if article.downloaded.structure_group %}{{article.downloaded.structure_group}}{% else %}?{% endif %}</td>
-    {% include '_article_link.html' with article=article intable=1 only %}
-    <td>{{article.fb_created}}</td>
+    <td><a href="{{ article.get_absolute_url|iriencode }}" title="View {{article.url|iriencode}}">{{article.title|default:'title missing'}}</a></td>
+    <td><a href="{% url 'article_raw' article.id %}?style=selector" title="Debug CSS selectors">Debug</a></td>
+    <td><a href="{{article.url|iriencode}}">{{article.url_signature.base_domain}}</a></td>
+    <td>{{article.fb_created|date:"Y-m-d"}}</td>
     <td>{{article.extracted}}</td>
+    <td class="sgroup">{% if article.downloaded.structure_group %}{{article.downloaded.structure_group}}{% else %}?{% endif %}</td>
     <td class="matched"></td>
 </tr>
 <!--<li class="deventry devsample{{article.id}} sgroup{{article.downloaded.structure_group}}" data-id="{{article.id}}">{% include '_article_link.html' with article=article only %}</li>-->
@@ -67,24 +69,37 @@ Work on another field:
   color: gray;
   cursor: auto;
 }
-.matched[data-value="0"] {
+.matched[data-value="0"], .found0 {
   color: red;
   cursor: auto;
 }
-.matched[data-value="1"] {
+.matched[data-value="1"], .found1 {
   color: green;
+}
+.found2 {
+  color: orange;
 }
 .matched-content {
   margin: .5em 2em;
   font-style: italic;
+}
+#match-summary-table td .summcell {
+  cursor: pointer;
 }
 </style>
 {% endblock %}
 
 {% block js %}
 <script type="text/javascript">
-jQuery.fn.setMatched = function(val) {
-  var el = this.find('.matched').addBack('.matched').attr('data-value', val).text(val);
+jQuery.fn.setMatched = function(val, which, nColors) {
+  var txt = val;
+  var style = '';
+  if ((which !== null) && (which !== undefined))
+    txt += ' by s' + (which + 1);
+    style = 'background-color: hsla(' + (360 * which / nColors) + ', 50%, 75%, .5)'
+  var el = this.find('.matched').addBack('.matched').attr('data-value', val).text(txt).attr('style', style);
+  $(this).attr('data-found', val < 2 ? val : 2);
+  $(this).attr('data-foundby', which);
   return this;
 }
 
@@ -92,6 +107,7 @@ $(document).ready(function() {
   table = $('#devsample').DataTable({
     pageLength: 1000,
     lengthChange: false,
+    order: [[5, 'asc']],  // structure group / "cluster"
   });
   //<ol class="matched-content"></ol>');
   var doEvaluate = function(ev){ $('#seltest').click(); ev.preventDefault(); return false; };
@@ -100,22 +116,98 @@ $(document).ready(function() {
 
   $('#seltest').click(function(){
     $('#seltest').prop('disabled', true);
+    $('#match-summary-table').DataTable().destroy(true);
     var selector = $("#selector").val()
+    var nSelectors = selector.split(';').length;
     $('#devsample > tbody > tr').setMatched('?');
     $('#devsample > tbody > tr').data('matched-content', '');
     $.get('{% url 'extractor_eval' params.sig %}',
           {selector: selector},
           function (result) {
+            var summary = {};
+            var increment = function(key, extractions) {
+              if (summary[key] === undefined)
+                summary[key] = [0, 0, 0];
+              summary[key][extractions.length > 1 ? 2 : extractions.length] ++;
+            }
             $.each(result[selector], function (article_id, extractions) {
+              which_selector = extractions[1];
+              extractions = extractions[0];
               var entry = $('#devsample .devsample' + article_id);
-              entry.setMatched(extractions.length);
+              var sgroup = entry.find('.sgroup').text();
+              // XXX: Do this upon construction
+              entry.attr('data-sgroup', sgroup)
+              increment('-', extractions);
+              increment(sgroup + '-', extractions);
+              if (which_selector !== null) {
+                increment('-' + which_selector, extractions);
+                increment(sgroup + '-' + which_selector, extractions);
+              }
+              entry.setMatched(extractions.length, which_selector, nSelectors);
               var content = $('<ol class="matched-content" />')
               for (var i in extractions) {
                 content.append($('<li/>').text(extractions[i]));
               }
               entry.data('matched-content', $('<div>').append(content.clone()).html())
             });
+
             $('#seltest').prop('disabled', true);
+
+            // Update summary table
+            var emptyRow = [''];
+            var columns = [{'title': 'Cluster'}];
+            for (var i = 0; i < nSelectors; i++) {
+                emptyRow.push('');
+                columns.push({'title': 's' + (i + 1)});
+            }
+            columns.push({'title': 'Total'});
+            var rows = {'': emptyRow.slice()}
+            for (var key in summary) {
+              var sgroup = key.split('-')[0];
+              var which = key.split('-')[1];
+              if (!rows[sgroup])
+                rows[sgroup] = emptyRow.slice();
+              var totals = summary[key];
+              var cell = '';
+              for (var i in totals) {
+                if (totals[i])
+                  cell += (cell ? '/' : '') + '<span data-sgroup="'+sgroup+'" data-foundby="'+which+'" data-found="'+i+'" class="summcell found' + i + '">' + totals[i] + '</span>';
+              }
+              rows[sgroup][which === '' ? nSelectors : parseInt(which)] = cell;
+            }
+            var newRows = [];
+            for (var key in rows) {
+                if (key === '') continue;
+                newRows.push([key].concat(rows[key]));
+            }
+            newRows.push(['Total'].concat(rows['']));
+            $('#match-summary').html('<table cellpadding="0" cellspacing="0" border="0" class="display" id="match-summary-table"></table>');
+            $('#match-summary-table').DataTable({
+              data: newRows,
+              columns: columns,
+              paging: false,
+              ordering: false,
+              sorting: [],
+              info: false,
+              filter: false,
+            })
+            $('#match-summary-table td .summcell').click(function(evt) {
+              // Navigation from summary to deventries
+              var el = $(evt.target);
+              var criteria = [];
+              criteria.push('[data-found="' + el.data('found') + '"]');
+              if (el.data('foundby')) {
+                criteria.push('[data-foundby="' + el.data('foundby') + '"]');
+              }
+              if (el.data('sgroup')) {
+                criteria.push('[data-sgroup="' + el.data('sgroup') + '"]');
+              }
+              if (criteria.length == 0)
+                return;
+              var matching = $('.deventry' + criteria.join(''));
+              $(window).scrollTop($(matching).offset().top);
+              matching.effect('highlight', 'slow');
+            });
           },
           'json').always(function (){
             $('#seltest').prop('disabled', false);
@@ -147,7 +239,15 @@ $(document).ready(function() {
     }
     return;
   });
+  var isModified = function() {
+    return $('#selector').val() != $('#selector').text();
+  }
 
+  $('#backoff-selector-link').click(function() {
+    if (!isModified() || window.confirm('The selector has been changed. Are you sure?')) {
+      $('#selector').val($(this).attr('title'));
+    }
+  });
   $('#copy-selector-link').click(function() {
     if ($('#copy-selector-table')[0]) {
       $('#copy-selector-table').DataTable().destroy(true);
@@ -161,35 +261,36 @@ $(document).ready(function() {
     var table = $('<table id="copy-selector-table" class="table table-striped" />').insertAfter(this).DataTable({
       // TODO: set field dynamically
       ajax: "{% url 'prior_extractors' field=params.field sig=params.sig %}",
-      order: [[ 3, "desc" ], [1, "desc"]],
+      order: [[ 4, "desc" ], [1, "desc"]],
       // XXX: there must be a nicer way to do this!?
       rowCallback: function(row, data) {
         // click for CSS selector
-        console.log($('td:first', row));
+        if ($('td:first a', row).length)
+          return;  // already applied
         $('td:first', row).wrapInner($('<a href="#" />').click(function() {
           $('#selector').val($(this).text()).trigger("input");
+          table.destroy(true);
+        }));
+        $('td:nth-child(2)', row).wrapInner($('<a href="#">+</a>').click(function() {
+          var val = $('#selector').val();
+          val = val.replace(/;*\s*$/, ';\n' + $(this).closest('td').prev().text());
+          $('#selector').val(val).trigger("input");
           table.destroy(true);
         }));
       },
       columns: [
         {data: 'selector', title: 'CSS selector'},
+        {data: 'append', title: 'Append'},
         {data: 'overall', title: '#sigs', type: 'num'},
-        {data: 'overall_example', title: 'example', render: renderSig},
+        {data: 'example', title: 'example', render: renderSig},
         {data: 'domain', defaultContent: "0", title: '#sigs in domain', type: 'num'},
-        {data: 'domain_example', defaultContent: "", title: 'example', render: renderSig},
       ],
     });
   });
 
-  $('#fieldsel').change(function(){
-    // TODO: error if not saved
-    window.location = $(this).val();
-  });
-
-  var saved = false;
-  $('#selentry').submit(function(){saved = true;});
+  $('#selentry').submit(function(){$('#selector').text($('#selector').val());});
   $(window).on('beforeunload', function(){
-    if (!saved && $('#selector').val() != $('#selector').text()) {
+    if (isModified()) {
       return "The selector has been changed but not saved."
     }
   });
@@ -201,7 +302,6 @@ $(document).ready(function() {
       trs.find('.matched').click();
       $(toggleAnchor).text(' –');
     } else {
-        console.log('!aawsdfas')
       trs.each(function() {
         table.row(this).child.hide()
         $(this).removeClass('shown');
@@ -211,6 +311,18 @@ $(document).ready(function() {
     return false;
   }));
 
+  // HACK: colouring by cluster
+  var sgroups = {};
+  var nSgroups = 0;
+  $('.sgroup').each(function(){
+    var txt = $(this).text();
+    if (sgroups[txt] === undefined)
+      sgroups[txt] = nSgroups++;
+  });
+  $('.sgroup').each(function(){
+    var style = 'background-color: hsla(' + (360 * sgroups[$(this).text()] / nSgroups) + ', 50%, 75%, .5)';
+    $(this).attr('style', style);
+  });
 });
 
 {% if eval_on_load %}
