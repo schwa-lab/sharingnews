@@ -201,7 +201,7 @@ def get_extractor(request, signature, field):
                               {'params': {'sig': signature.signature,
                                           'field': field,
                                           'msg': request.GET.get('msg')},
-                               'fields': DownloadedArticle.EXTRACTED_FIELDS,
+                               'fields': {f: signature.get_selector(f) for f in DownloadedArticle.EXTRACTED_FIELDS},
                                'selector': selector,
                                'backoff': backoff,
                                'eval_on_load': eval_on_load,

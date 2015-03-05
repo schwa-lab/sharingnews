@@ -11,7 +11,7 @@
 
 <nav>
 Work on another field:
-{% for field in fields %}{% if field != params.field %}<a href="{% url 'extractor' field=field sig=params.sig %}">{{field}}</a> {% endif %}{% endfor %}
+{% for field, sel in fields.items %}{% if field != params.field %}<a title="Modify current {{field}} selector: {{sel}}" href="{% url 'extractor' field=field sig=params.sig %}">{{field}}</a> {% endif %}{% endfor %}
 </nav>
 
 <!-- for now we'll pretend we're only dealing with one field -->
@@ -49,7 +49,7 @@ Work on another field:
     <td><a href="{{article.url|iriencode}}">{{article.url_signature.base_domain}}</a></td>
     <td>{{article.fb_created|date:"Y-m-d"}}</td>
     <td>{{article.extracted}}</td>
-    <td class="sgroup">{% if article.downloaded.structure_group %}{{article.downloaded.structure_group}}{% else %}?{% endif %}</td>
+    <td class="sgroup">{% if article.downloaded.structure_group %}{{article.downloaded.structure_group|stringformat:"02d"}}{% else %}?{% endif %}</td>
     <td class="matched"></td>
 </tr>
 <!--<li class="deventry devsample{{article.id}} sgroup{{article.downloaded.structure_group}}" data-id="{{article.id}}">{% include '_article_link.html' with article=article only %}</li>-->
@@ -148,7 +148,7 @@ $(document).ready(function() {
               for (var i in extractions) {
                 content.append($('<li/>').text(extractions[i]));
               }
-              entry.data('matched-content', $('<div>').append(content.clone()).html())
+              entry.data('matched-content', $('<div>').append(content.clone()).html().replace(/\n/g, '<br/>'))
             });
 
             $('#seltest').prop('disabled', true);
@@ -246,6 +246,7 @@ $(document).ready(function() {
   $('#backoff-selector-link').click(function() {
     if (!isModified() || window.confirm('The selector has been changed. Are you sure?')) {
       $('#selector').val($(this).attr('title'));
+      $('#selector').trigger('input');
     }
   });
   $('#copy-selector-link').click(function() {

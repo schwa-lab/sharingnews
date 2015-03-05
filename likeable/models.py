@@ -15,9 +15,10 @@ from readability import readability
 from django.db import models
 from django.core.urlresolvers import reverse
 from dateutil.parser import parse as parse_date
+import requests
 
 from .cleaning import xml_unescape, compress_html, extract_canonical, unicode_from_www
-from .scraping import extract, DEFAULT_CODE, DOMAIN_DEFAULT_CODE, fetch_with_refresh, get_mime
+from .scraping import extract, DEFAULT_CODE, DOMAIN_DEFAULT_CODE, fetch_with_refresh, get_mime, FetchException
 from .models_helpers import IntArrayField
 from .structure import sketch_doc
 
@@ -122,7 +123,7 @@ class UrlSignature(models.Model):
     DEFAULT_SELECTORS = {
         'headline': DEFAULT_CODE + '((text))[itemprop~="headline"]; ((text))h1; [property~="og:title"]::attr(content)',
         'body_text': DEFAULT_CODE + '((text))((readability.summary))p',
-        'byline': DEFAULT_CODE,
+        'byline': DEFAULT_CODE + '((text))[itemprop~=author];\n((text)).hnews .author .fn;\n((text))[rel=author];((text)).byline',
         # there are more variations of the following that could be generated e.g. content attr, text content (worth the cost for non-ISO?)
         'dateline': DEFAULT_CODE + '[property~=datePublished]::attr(datetime); [property~=dateCreated]::attr(datetime); [itemprop~=datePublished]::attr(datetime); [itemprop~=dateCreated]::attr(datetime)',
         #'body_html': DEFAULT_CODE + '((readability.summary))',
@@ -331,8 +332,11 @@ class Article(models.Model):
     spider_when = models.DateTimeField(null=True)
     fetch_status = models.IntegerField(null=True)
     # Special values of fetch_status:
-    CUSTOM_FETCH_STATUS = {
+    CUSTOM_FETCH_STATUS = {  # see likeable.scraping
         'bad content type': -111,
+        'too many redirects': -1,
+        'empty content': -2,
+        'timeout': -10,
     }
     _accept_mime = {'text/html', 'application/xml', 'text/xml'}.__contains__  # accept without note
     _reject_mime = re.compile('^(application/pdf$|image/|audio/|video/)').match  # accept without note
@@ -370,11 +374,19 @@ class Article(models.Model):
                 return self.downloaded, None
 
         timestamp = utcnow()
-        hops = fetch_with_refresh(self.url, accept_encodings)
+        try:
+            hops = fetch_with_refresh(self.url, accept_encodings)
+        except FetchException as exc:
+            if exc.code is not None:
+                assert exc.code < 0
+                self.fetch_status = exc.code
+                if save:
+                    self.save()
+            raise
+
         response = hops[-1]
-        status = response.status_code
-        self.fetch_status = status
-        if status != 200:
+        self.fetch_status = response.status_code
+        if self.fetch_status != 200:
             if save:
                 self.save()
             return None, hops
@@ -489,7 +501,7 @@ class DownloadedArticle(models.Model):
         sig_modified = self.article.url_signature.modified_when
         if sig_modified is None:
             return False
-        return self.scrape_when is None or self.scrape_when <= sig_modified
+        return self.scrape_when is None or self.scrape_when < sig_modified
 
     # sketches for clustering
     # array of 100 32-bit ints representing minhash over HTML paths
@@ -587,6 +599,7 @@ class DownloadedArticle(models.Model):
             return
         # etree will not accept encoding header with unicode input:
         html = re.sub('(?i)^([^>]*) encoding=[^> ]*', r'\1', self.html)
+        html = compress_html(html)  # Added 2015-03-04 to avoid javascript in extractions
         return etree.fromstring(html, parser=etree.HTMLParser(),
                                 base_url=self.article.url)
 

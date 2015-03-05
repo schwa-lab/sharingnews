@@ -14,10 +14,10 @@ ID_RE = re.compile('^[0-9]+$')
 
 def iter_lines(f, resume=None):
     seen = set()
-    for l in f:
+    for i, l in enumerate(f):
         if resume is not None:
             if l.rstrip('\n\r') == resume:
-                print(now(), 'Resuming at', resume, file=sys.stderr)
+                print(now(), 'Resuming at', resume, 'on line', i + 1, file=sys.stderr)
                 resume = None
             else:
                 continue

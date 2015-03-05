@@ -151,7 +151,7 @@ def url_as_diff(new, old):
     return out
 
 
-SCRIPT_STYLE_RE = re.compile(r'<(script|style|iframe)\b.*?</\1>', re.DOTALL)
+SCRIPT_STYLE_RE = re.compile(r'<(script|style|iframe)\b.*?</\1\b.*?>', re.DOTALL | re.IGNORECASE)
 WHITESPACE_RE = re.compile(r'[ \t]*(\n)[ \t]*(\n?)\s*', re.DOTALL)
 
 
@@ -198,9 +198,15 @@ def unicode_from_www(response):
     if match and ';' in match.group():
         # Ignore HTTP encoding
         override_encodings = []
-    ud = UnicodeDammit(response.content, override_encodings=override_encodings,
+
+    # Smart quotes handling for Windows-12* encodings added 2015-03-04
+    ud = UnicodeDammit(response.content, smart_quotes_to='html',
+                       override_encodings=override_encodings,
                        is_html=True)
+    # And an override if smart quotes are in UTF8 but it says ISO-8859
+    if ud.original_encoding.lower().startswith('iso') and '\xe2\x80' in response.content:
+        return response.content.decode('utf8')
     if ud.unicode_markup is None:
         raise UnicodeDecodeError('UnicodeDammit failed for '
-                                 '{}'.format(self.id))
+                                 '{}'.format(response.url))
     return ud.unicode_markup

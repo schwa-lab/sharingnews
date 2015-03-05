@@ -27,10 +27,11 @@ document.addEventListener('click', function(evt) {
   for (var i = 0; i < attrs.length; i++) {
     var val = evt.target.getAttribute(attrs[i]);
     if (val) {
-      msg += '\\n' + attrs[i] + ' :: ' + val;
+      msg += '\n\n' + attrs[i] + ' :: ' + val;
     }
   }
   alert(msg);
+  evt.preventDefault();
   return false;
 }, false);
 
@@ -46,14 +47,21 @@ document.addEventListener('click', function(evt) {
             if (a.name == 'content') {
                 content = a.value;
             } else {
-                descr.push(a.name + '="' + a.value + '"');
+                descr.push('[' + a.name + '="' + a.value + '"]');
             }
         }
         var dt = document.createElement('dt');
-        dt.appendChild(document.createTextNode('[' + descr.join(', ') + ']::attr(content)'));
+        dt.appendChild(document.createTextNode('meta' + descr.join('') + '::attr(content)'));
         dl.appendChild(dt);
         var dd = document.createElement('dd');
-        dd.appendChild(document.createTextNode(content));
+        var node = document.createTextNode(content);
+        if (content.match(/^https?:\/\/\S*$/)) {
+            var a = document.createElement('a');
+            a.setAttribute('href', content);
+            a.appendChild(node);
+            node = a;
+        }
+        dd.appendChild(node);
         dl.appendChild(dd);
     }
     var body = document.getElementsByTagName('body')[0];

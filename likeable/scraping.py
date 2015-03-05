@@ -15,17 +15,23 @@ css_to_xpath = csstranslator.ScrapyHTMLTranslator().css_to_xpath
 HTTP_ENCODINGS = ('identity', 'deflate', 'compress', 'gzip')
 meta_refresh_re = re.compile('<meta[^>]*?'
                              'content=["\']'
-                             '([^>]+?url=(.*?))'
+                             '([^>]+?url=([^>]*?))'
                              '["\'][^>]*', re.DOTALL | re.IGNORECASE)
 
 
 class FetchException(Exception):
-    def __init__(self, underlying, url, hops):
+    def __init__(self, underlying, url, hops, code=None):
         super(FetchException, self).__init__(underlying)
         self.underlying = underlying
         self.exc_info = sys.exc_info()
         self.url = url
         self.hops = hops  # preceding the error, usually
+        if code is None:
+            if isinstance(underlying, requests.TooManyRedirects):
+                code = -1
+            if isinstance(underlying, requests.Timeout):
+                code = -10
+        self.code = code
 
 
 def fetch_with_refresh(url, accept_encodings=HTTP_ENCODINGS, max_delay=20):
@@ -76,7 +82,7 @@ def fetch_with_refresh(url, accept_encodings=HTTP_ENCODINGS, max_delay=20):
     except Exception as e:
         raise FetchException(e, url, hops)
     if hops[-1].status_code == 200 and not hops[-1].content:
-        raise FetchException('Status 200 but empty content', url, hops)
+        raise FetchException('Status 200 but empty content', url, hops, code=-2)
     return hops
 
 
