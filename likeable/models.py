@@ -247,6 +247,19 @@ class UrlSignature(models.Model):
     def __repr__(self):
         return '<UrlSignature: {0.signature} |{0.status}>'.format(self)
 
+
+class Site(models.Model):
+    """Replicates a Likeable Engine table"""
+    id = models.IntegerField(primary_key=True)
+    name = models.TextField()
+    url = models.URLField(max_length=256)
+    rss_url = models.URLField(max_length=256)
+    active = models.BooleanField()
+    last_fetch = models.DateTimeField()
+    health_start = models.DateTimeField()
+    is_healthy = models.BooleanField()
+
+
 SHARES_FIELDS = ['fb_count_initial', 'fb_count_2h', 'fb_count_1d',
                  'fb_count_5d', 'fb_count_longterm', 'tw_count_initial',
                  'tw_count_2h', 'tw_count_1d', 'tw_count_5d',
@@ -317,6 +330,7 @@ class Article(models.Model):
     fb_has_title = models.BooleanField(default=False, db_index=True)  # for easy indexing
     title = models.CharField(max_length=1000, null=True)  # taken from Facebook scrape
     description = models.TextField(null=True)
+    sharewars_site = models.ForeignKey(Site, null=True)
 
     fb_count_initial = models.PositiveIntegerField(null=True)
     fb_count_2h = models.PositiveIntegerField(null=True)
@@ -657,3 +671,4 @@ class ShareWarsUrl(models.Model):
     id = models.BigIntegerField(primary_key=True)
     spidered = models.ForeignKey(SpideredUrl, null=True)  # null only for loading
     when = models.DateTimeField(null=True, help_text='spider time')
+    site = models.ForeignKey(Site, null=True)
