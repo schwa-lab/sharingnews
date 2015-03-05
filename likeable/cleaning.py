@@ -199,13 +199,16 @@ def unicode_from_www(response):
         # Ignore HTTP encoding
         override_encodings = []
 
+    # FIXME: have found cases where XML comment contains bogus characters. Perhaps run over comment-stripped content.
+    #        But have also found broken encoding in HTML attributes.
+
     # Smart quotes handling for Windows-12* encodings added 2015-03-04
     ud = UnicodeDammit(response.content, smart_quotes_to='html',
                        override_encodings=override_encodings,
                        is_html=True)
     # And an override if smart quotes are in UTF8 but it says ISO-8859
     if ud.original_encoding.lower().startswith('iso') and '\xe2\x80' in response.content:
-        return response.content.decode('utf8')
+        return response.content.decode('utf8', 'ignore')
     if ud.unicode_markup is None:
         raise UnicodeDecodeError('UnicodeDammit failed for '
                                  '{}'.format(response.url))
