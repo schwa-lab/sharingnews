@@ -253,11 +253,11 @@ class Site(models.Model):
     id = models.IntegerField(primary_key=True)
     name = models.TextField()
     url = models.URLField(max_length=256)
-    rss_url = models.URLField(max_length=256)
+    rss_url = models.URLField(max_length=256, null=True)
     active = models.BooleanField()
-    last_fetch = models.DateTimeField()
-    health_start = models.DateTimeField()
-    is_healthy = models.BooleanField()
+    last_fetch = models.DateTimeField(null=True)
+    health_start = models.DateTimeField(null=True)
+    is_healthy = models.NullBooleanField()
 
 
 SHARES_FIELDS = ['fb_count_initial', 'fb_count_2h', 'fb_count_1d',
