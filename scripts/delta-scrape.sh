@@ -42,8 +42,12 @@ wget -E -H -k -p -A .htm,.html,.css -U "$USERAGENT" "$url" 2>$tmpf &&
 git add * 2>/dev/null &&
 git commit -m "Fetch $url at $ts"
 
-git repack &&
-git gc --aggressive 2>/dev/null
+if [ $RANDOM -lt 1000 ]  # roughly 1/32
+then
+	# This can be expensive on memory so we only do it occasionally
+	git repack &&
+	git gc --aggressive 2>/dev/null
+fi
 
 rm $tmpf
 
