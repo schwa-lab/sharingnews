@@ -7,7 +7,7 @@ import traceback
 from django.db import transaction
 
 from likeable.idqueue import main, json_log
-from likeable.models import DownloadedArticle
+from likeable.models import DownloadedArticle, Article
 
 
 DEST_FIELDS = DownloadedArticle.EXTRACTED_FIELDS
@@ -45,6 +45,10 @@ def extract(args, article_id):
         return
     if parsed is None:
         json_log(article_id=article_id, status='parsed_html is None')
+        if not downloaded.article.title:
+            downloaded.article.fetch_status = Article.CUSTOM_FETCH_STATUS['effectively empty content']
+            downloaded.article.save()
+            downloaded.delete()
         return
     for field in DEST_FIELDS:
         extractor = getattr(signature, 'extract_' + field)

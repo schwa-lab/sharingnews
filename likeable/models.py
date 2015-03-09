@@ -350,7 +350,9 @@ class Article(models.Model):
         'bad content type': -111,
         'too many redirects': -1,
         'empty content': -2,
+        'effectively empty content': -3,
         'timeout': -10,
+        'server repeatedly unavailable': -503,
     }
     _accept_mime = {'text/html', 'application/xml', 'text/xml'}.__contains__  # accept without note
     _reject_mime = re.compile('^(application/pdf$|image/|audio/|video/)').match  # accept without note
@@ -614,6 +616,7 @@ class DownloadedArticle(models.Model):
         # etree will not accept encoding header with unicode input:
         html = re.sub('(?i)^([^>]*) encoding=[^> ]*', r'\1', self.html)
         html = compress_html(html)  # Added 2015-03-04 to avoid javascript in extractions
+        html = re.sub(u'[\x00\x01-\x08\x0b-\x0c\x0e-\x1f\x7f-\x84\ufffe\uffff]', u'', html)  # remove invalid XML1.0 chars
         return etree.fromstring(html, parser=etree.HTMLParser(),
                                 base_url=self.article.url)
 
