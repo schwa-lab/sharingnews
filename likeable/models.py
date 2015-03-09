@@ -265,6 +265,9 @@ SHARES_FIELDS = ['fb_count_initial', 'fb_count_2h', 'fb_count_1d',
                  'tw_count_2h', 'tw_count_1d', 'tw_count_5d',
                  'tw_count_longterm']
 
+# max known share count a little over 5e6
+FINE_HISTOGRAM_BINS = [0] + [10 ** (i / 10.) for i in range(67)]
+
 class ArticleQS(models.query.QuerySet):
     def calc_share_quantiles(self, percentiles=[50, 75, 90, 95, 99], shares_field='fb_count_longterm'):  #  min_fb_created=None, max_fb_created=None):
         nonzero_shares = (self.filter(**{shares_field + '__gt': 0})
@@ -302,7 +305,10 @@ class ArticleQS(models.query.QuerySet):
         return self.filter(url_signature__base_domain=domain)
 
     def close_scrapes(self, n_days=1):
-        """Filter such that fb_created and sharewars crawling"""
+        """Filter such that fb_created and sharewars crawling
+
+        Note this may be indicative of when item was first shared / commented, but also other factors
+        """
         # XXX: perhaps should use extra with ABS instead, but how to force joins?
         # abs(a - b) < 2 ==>  a <= b < 2 + a  or  b <= a < 2 + b
         d = datetime.timedelta(days=n_days)

@@ -1,0 +1,75 @@
+#!/usr/bin/env python
+
+from __future__ import print_function, division
+import math
+import sys
+import csv
+from collections import defaultdict
+
+import matplotlib.pyplot as plt
+
+from likeable.models import FINE_HISTOGRAM_BINS
+
+MIN_SAMPLES = 2000
+
+reader = csv.DictReader(sys.stdin)
+by_domain = defaultdict(list)
+for row in reader:
+    by_domain[row['domain']].append(row)
+
+
+def readable_number(n):
+    # XXX: not fully-fledged
+    n = int(n)
+    d = len(str(n))
+    if d > 6:
+        return str(n)[:-6] + 'M'
+    if d > 3:
+        return str(n)[:-3] + 'K'
+    return str(n)
+
+idx = range(0, 68)
+for domain, rows in by_domain.items():
+    plt.clf()
+    # TO[0] + DO: same ylim for fb and tw
+    for service in ['fb', 'tw']:
+        freq_dist = defaultdict(int)
+        for row in rows:
+            freq_dist[int(row[service + '@5d group'])] += int(row['frequency'])
+        if sum(v for k, v in freq_dist.items() if k > 0) < MIN_SAMPLES:
+            continue
+        fig, ax = plt.subplots()
+        ax.bar(idx, [freq_dist[i] for i in idx])
+        ax.set_ylabel('Frequency'.format(freq_dist[0]))
+        ax.set_xlabel('{} count at 5 days'.format(service))
+        ax.set_title('{} in first half of 2014'.format(domain))
+        xticks = idx[1::10]
+        ax.set_xticks(xticks)
+        ymax = max(v for k, v in freq_dist.items() if k > 0)
+        if freq_dist[0] > ymax:
+            ax.text(0, ymax * 1.05, freq_dist[0], ha='center')
+        ax.set_ylim(0, ymax * 1.05)
+        ax.set_xticklabels([readable_number(FINE_HISTOGRAM_BINS[i]) for i in xticks])
+        path = 'histogram-plots-new/{}-{}.png'.format(domain, service)
+        plt.savefig(path)
+        print('wrote to ' + path)
+
+    fig, ax = plt.subplots()
+    freq_dist = defaultdict(int)
+    for row in rows:
+        freq_dist[int(row['fb@5d group']), int(row['tw@5d group'])] = int(row['frequency'])
+    if sum(v for k, v in freq_dist.items() if k > 0) < MIN_SAMPLES:
+        continue
+    ax.imshow([[math.log(1 + freq_dist[i, j]) for i in idx[1:]] for j in idx[1:]],
+              interpolation='nearest', cmap='Blues')
+    ticks = idx[1::10]
+    ax.set_title('{} in first half of 2014'.format(domain))
+    ax.set_xticks(ticks)
+    ax.set_yticks(ticks)
+    ax.set_xticklabels([readable_number(FINE_HISTOGRAM_BINS[i]) for i in xticks])
+    ax.set_yticklabels([readable_number(FINE_HISTOGRAM_BINS[i]) for i in xticks])
+    ax.set_xlabel('fb count at 5 days')
+    ax.set_ylabel('tw count at 5 days')
+    path = 'histogram-plots-new/{}-fb-vs-tw.png'.format(domain)
+    fig.savefig(path)
+    print('wrote to ' + path)
