@@ -84,7 +84,7 @@ def extract_canonical(html, relative_to=None):
     if canonical_link:
         tag = canonical_link.group()
         try:
-            canonical = CANONICAL_URL_RE.search(tag).group(1)
+            canonical = CANONICAL_URL_RE.search(tag).group(2)
         except AttributeError:
             return None
         canonical = xml_unescape(canonical)
