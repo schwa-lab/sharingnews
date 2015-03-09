@@ -102,6 +102,8 @@ class FBBatchFetcher(object):
         return self.fetch_comma(urls)
 
     def fetch_comma(self, urls, _depth=1):
+        if not urls:
+            return '{}'
         self._pre()
         try:
             resp = requests.get('https://graph.facebook.com/v2.2?access_token={}&ids={}'.format(FB_API_TOKEN, ','.join(urllib.quote(url) for url in urls)),
@@ -125,7 +127,7 @@ class FBBatchFetcher(object):
                 if self.wait > self.MAX_WAIT:
                     raise RuntimeError('Wait is now {} which exceeds maximum of {}'.format(self.wait, self.MAX_WAIT))
                 if _depth and _depth % 4 == 0:
-                    print(now(), 'Wait is now {} with error:\n{}'.format(self.wait, out), file=sys.stderr)
+                    print(now(), 'Wait is now {} with error:\n{}\n\nURLS: {}'.format(self.wait, out, urls), file=sys.stderr)
                     time.sleep(20)
                 return self.fetch_comma(urls, _depth=_depth + 1)
             if code == 1:
@@ -141,6 +143,8 @@ class FBBatchFetcher(object):
     BATCH_FMT = '{"method":"GET","relative_url":%s}'
 
     def fetch_batch(self, urls, _depth=1):
+        if not urls:
+            return '{}'
         self._pre()
         if self.params:
             params = '?' + urllib.urlencode(self.params)

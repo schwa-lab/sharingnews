@@ -24,17 +24,24 @@ def json_log(**data):
     logger.info(json.dumps(data))
 
 
-def enqueue(channel, queue, f):
-    i = 0
+def enqueue_generator(args, f):
     for l in f:
+        yield str(int(l))
+
+
+def enqueue(channel, queue, it):
+    i = 0
+    b = 0
+    for entry in it:
         i += 1
+        b += len(entry)
         channel.basic_publish(exchange='',
                               routing_key=queue,
-                              body=str(int(l)),
+                              body=entry,
                               properties=pika.BasicProperties(
                                   delivery_mode=2,  # make message persistent
                               ))
-    json_log(enqueued=i)
+    json_log(enqueued=i, n_bytes=b)
 
 
 def worker(channel, queue, process_cb, args):
@@ -43,6 +50,7 @@ def worker(channel, queue, process_cb, args):
             process_cb(args, body)
         except Exception:
             json_log(body=body, traceback=traceback.format_exc())
+            channel.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
         else:
             channel.basic_ack(delivery_tag=method.delivery_tag)
         reset_queries()  # avoid memory leak
@@ -53,7 +61,7 @@ def worker(channel, queue, process_cb, args):
     channel.start_consuming()
 
 
-def main(name, process_cb, argparse_cb=None, custom_enqueue=None):
+def main(name, process_cb, argparse_cb=None, enqueue_generator=enqueue_generator):
     global logger
     default_log_prefix = os.path.expanduser('~likeable/logs/{0}/'
                                             '{0}-{1}-{2}.log.bz2'
@@ -98,6 +106,7 @@ def main(name, process_cb, argparse_cb=None, custom_enqueue=None):
         connection = pika.BlockingConnection(conn_params)
         channel = connection.channel()
         queue = channel.queue_declare(queue=args.queue, durable=True, passive=args.app == 'count')
+        args.connection = connection
         if args.app == 'worker':
             try:
                 worker(channel, args.queue, process_cb, args)
@@ -107,10 +116,7 @@ def main(name, process_cb, argparse_cb=None, custom_enqueue=None):
                 time.sleep(wait)
                 continue
         elif args.app == 'enqueue':
-            if custom_enqueue:
-                custom_enqueue(args, channel, args.queue, args.infile)
-            else:
-                enqueue(channel, args.queue, args.infile)
+            enqueue(channel, args.queue, enqueue_generator(args, args.infile))
         elif args.app == 'count':
             if args.repeat_interval is not None:
                 print(datetime.datetime.now(), ':', end=' ')

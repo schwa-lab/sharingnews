@@ -65,7 +65,7 @@ def join(articles, statistics):
             fb, tw = stat[-2:]
             stats.append((stat_delta, fb, tw))
 
-        fb, tw = 0, 0
+        fb, tw = None, None
         stats.sort()
         out_stats = []
         for tup in stats:
@@ -73,7 +73,8 @@ def join(articles, statistics):
                 _, fb, tw = tup
             else:
                 _, delta_name = tup
-                out_stats.append('"{}":"{},{}"'.format(delta_name, fb, tw))
+                if fb is not None:
+                    out_stats.append('"{}":"{},{}"'.format(delta_name, fb, tw))
 
         print('%s|%s|%s|%s|{%s}' % (row[id_field], row[site_field], row[url_field],
                                     row[base_dt_field], ','.join(out_stats)))
