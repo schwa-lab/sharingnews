@@ -61,13 +61,19 @@ def process(args, body):
     header, _, body = body.partition('\n')
     fields = header.split('|')
     url_field = fields.index('article_Url')
+    swid_field = fields.index('article_Id')
     body = [l.split('|') for l in body.split('\n') if l]
+    to_skip = list(ShareWarsUrl.objects.filter(id__in=[int(l[swid_field]) for l in body]).values_list('id', flat=True))
+    n_skipped = len(to_skip)
+    if n_skipped:
+        body = [l for l in body if int(l[swid_field]) not in to_skip]
     # Perhaps begin by get-or-create sharewarsurl
     urls = [l[url_field] for l in body]
     # FIXME: time.sleep use in batch fetcher may be problematic to pika
     # XXX: might be better to rely on rabbitmq for retry
 
-    fb_prefetched = load_fb_prefetched()  # constant and cached
+    #fb_prefetched = load_fb_prefetched()  # constant and cached
+    fb_prefetched = {}
 
     fb_result = FBBatchFetcher(FB_URL_FIELDS).fetch_auto([url for url in urls if url not in fb_prefetched])
     if not fb_result.startswith('{'):
@@ -83,10 +89,13 @@ def process(args, body):
         record = dict(zip(fields, record))
         _, created = create_article(record, fb_result[record['article_Url']])
         n_created += created
-    json_log(n_processed=len(body), n_created=n_created, sharewars_id_example=body[0][0] if body else None, prefetched=len(prefetched_content))
+    json_log(n_processed=len(body), n_created=n_created, sharewars_id_example=body[0][0] if body else None, prefetched=len(prefetched_content),
+             skipped=n_skipped)
 
 
 def create_article(record, fb_record):
+    if fb_record is None:
+        json_log(error='Got null fb_record from Facebook', sharewars_id=record['article_Id'], initial_url=record['article_Url'])
     if 'og_object' not in fb_record:
         if 'share' in fb_record:
             json_log(error='Got no og_object from Facebook, but got share!', sharewars_id=record['article_Id'], initial_url=record['article_Url'])
