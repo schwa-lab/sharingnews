@@ -30,7 +30,7 @@ def load_fb_prefetched(glob_expr='data/fb-fetch2/*.multijson'):
     return out
 
 
-@lru_cache(maxsize=200)
+@lru_cache(maxsize=50)
 def _get_base_domain_sig(domain):
     obj, created = UrlSignature.objects.only('signature', 'id', 'base_domain')\
                                        .get_or_create(defaults={'base_domain': domain},
@@ -40,7 +40,7 @@ def _get_base_domain_sig(domain):
     return obj
 
 
-@lru_cache(maxsize=256)
+@lru_cache(maxsize=50)
 def _get_or_create_sig(sig):
     obj, created = UrlSignature.objects.only('signature', 'id', 'base_domain')\
                                        .get_or_create(signature='/'.join(sig))
