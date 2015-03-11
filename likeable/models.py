@@ -8,6 +8,7 @@ import urllib
 from collections import Counter, defaultdict, namedtuple
 import itertools
 import operator
+import random
 
 import pytz
 from lxml import etree
@@ -323,12 +324,18 @@ class ArticleManager(models.Manager):
         return ArticleQS(self.model)
 
 
+def _random():
+    # Picklable wrapper
+    return random.random()
+
+
 class Article(models.Model):
     objects = ArticleManager()
 
     # From Facebook's URL lookup
     id = models.BigIntegerField(null=False, primary_key=True,
                                 help_text="Facebook's numeric ID")
+    rand = models.FloatField(default=_random, help_text="Random number reproducable/fast random ordering")
     url_signature = models.ForeignKey(UrlSignature, null=True, db_index=True)  # null only when loading
     url = models.URLField(max_length=1000, db_index=True)  # canonical URL according to Facebook
     fb_updated = models.DateTimeField(null=True)
@@ -349,7 +356,7 @@ class Article(models.Model):
     tw_count_5d = models.PositiveIntegerField(null=True)
     tw_count_longterm = models.PositiveIntegerField(null=True)
 
-    spider_when = models.DateTimeField(null=True)
+    spider_when = models.DateTimeField(null=True, db_index=True)
     fetch_status = models.IntegerField(null=True)
     # Special values of fetch_status:
     CUSTOM_FETCH_STATUS = {  # see likeable.scraping
@@ -366,7 +373,7 @@ class Article(models.Model):
     # fetch_when = models.DateTimeField(null=True)
 
     ### From FB id lookup
-    fb_created = models.DateTimeField(null=True, db_index=True)
+    fb_created = models.DateTimeField(null=True)
     # fields include: site_name, image, video, admins, application, data
     # site_name = models.CharField(max_length=30)  # or use foreignkey enum
 
@@ -451,7 +458,7 @@ class Article(models.Model):
 
     class Meta:
         index_together = [
-            ('url_signature', 'fb_created'),
+            ('url_signature', 'spider_when'),
             ('fetch_status', 'url_signature'),
             ('fb_count_longterm', 'url_signature'),
         ]

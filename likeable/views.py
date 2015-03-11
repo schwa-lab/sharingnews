@@ -88,11 +88,11 @@ def collection(request, sig=None, period=None, start=None, end=None):
     if period:
         assert start is None and end is None
         _ps, _pe = _parse_month(period)
-        articles = articles.filter(fb_created__gte=_ps, fb_created__lt=_pe)
+        articles = articles.filter(spider_when__gte=_ps, spider_when__lt=_pe)
     elif start:
-        articles = articles.filter(fb_created__gte=_parse_month(start)[0])
+        articles = articles.filter(spider_when__gte=_parse_month(start)[0])
     elif end:
-        articles = articles.filter(fb_created__lt=_parse_month(end)[1])
+        articles = articles.filter(spider_when__lt=_parse_month(end)[1])
 
     if sig is None:
         # Tuple extended for signature object included below
@@ -195,7 +195,7 @@ def get_extractor(request, signature, field):
     backoff = _space_out(signature.get_backoff().get(field))
     eval_on_load = request.GET.get('autoeval', False)
     articles = signature.dev_articles
-    dev_sample = _sample(articles.only('id', 'title', 'fb_created', 'url_signature__base_domain', 'downloaded__structure_group').extra(select={'extracted': EXTRACTED_SQL}), stratify='downloaded__structure_group')
+    dev_sample = _sample(articles.only('id', 'title', 'spider_when', 'url_signature__base_domain', 'downloaded__structure_group').extra(select={'extracted': EXTRACTED_SQL}), stratify='downloaded__structure_group')
     #domain_sigs = articles.filter(url_signature__base_domain=signature.base_domain).signature_frequencies()
     return render_to_response('extractor.html',
                               {'params': {'sig': signature.signature,
