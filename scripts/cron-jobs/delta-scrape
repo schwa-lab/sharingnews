@@ -1,0 +1,146 @@
+# Edit this file to introduce tasks to be run by cron.
+# 
+# Each task to run has to be defined through a single line
+# indicating with different fields when the task will be run
+# and what command to run for the task
+# 
+# To define the time you can provide concrete values for
+# minute (m), hour (h), day of month (dom), month (mon),
+# and day of week (dow) or use '*' in these fields (for 'any').# 
+# Notice that tasks will be started based on the cron's system
+# daemon's notion of time and timezones.
+# 
+# Output of the crontab jobs (including errors) is sent through
+# email to the user the crontab file belongs to (unless redirected).
+# 
+# For example, you can run a backup of all your user accounts
+# at 5 a.m every week with:
+# 0 5 * * 1 tar -zcf /var/backups/home.tgz /home/
+# 
+# For more information see the manual pages of crontab(5) and cron(8)
+# 
+# m h  dom mon dow   command
+MAILTO=joel.nothman@gmail.com
+1,31 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "ninemsn" && cd "ninemsn" && ~likeable/likeable/scripts/delta-scrape.sh "http://ninemsn.com.au/" > /dev/null
+2,32 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "FOX_News" && cd "FOX_News" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.foxnews.com/" > /dev/null
+3,33 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "New_York_Times" && cd "New_York_Times" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.nytimes.com/" > /dev/null
+4,34 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "LA_Times" && cd "LA_Times" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.latimes.com/" > /dev/null
+5,35 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "CNN" && cd "CNN" && ~likeable/likeable/scripts/delta-scrape.sh "http://edition.cnn.com/" > /dev/null
+6,36 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Miami_Herald" && cd "Miami_Herald" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.miamiherald.com/" > /dev/null
+7,37 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Houston_Chronicle" && cd "Houston_Chronicle" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.chron.com/" > /dev/null
+8,38 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "USA_Today" && cd "USA_Today" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.usatoday.com/" > /dev/null
+9,39 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Boston_Globe" && cd "Boston_Globe" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.boston.com/" > /dev/null
+10,40 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Washington_Post" && cd "Washington_Post" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.washingtonpost.com/" > /dev/null
+11,41 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "West_Australian" && cd "West_Australian" && ~likeable/likeable/scripts/delta-scrape.sh "http://au.news.yahoo.com/thewest/" > /dev/null
+12,42 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Telegraph_UK" && cd "Telegraph_UK" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.telegraph.co.uk/" > /dev/null
+13,43 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "The_Mirror" && cd "The_Mirror" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.mirror.co.uk/" > /dev/null
+14,44 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "The_Sun" && cd "The_Sun" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.thesun.co.uk/sol/homepage/" > /dev/null
+15,45 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "MailOnline" && cd "MailOnline" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.dailymail.co.uk/auhome/index.html" > /dev/null
+16,46 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "BBC_News" && cd "BBC_News" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.bbc.co.uk/news/" > /dev/null
+17,47 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "The_Independant" && cd "The_Independant" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.independent.co.uk/" > /dev/null
+18,48 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "The_Globe_and_Mail" && cd "The_Globe_and_Mail" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.theglobeandmail.com/" > /dev/null
+19,49 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "The_Times_of_India" && cd "The_Times_of_India" && ~likeable/likeable/scripts/delta-scrape.sh "http://timesofindia.indiatimes.com/" > /dev/null
+20,50 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "The_Hindu" && cd "The_Hindu" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.thehindu.com/" > /dev/null
+21,51 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "News.com.au" && cd "News.com.au" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.news.com.au" > /dev/null
+22,52 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "SMH" && cd "SMH" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.smh.com.au/" > /dev/null
+23,53 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "The_Age" && cd "The_Age" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.theage.com.au/" > /dev/null
+24,54 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "The_Australian" && cd "The_Australian" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.theaustralian.com.au/" > /dev/null
+25,55 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "The_Daily_Telegraph" && cd "The_Daily_Telegraph" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.dailytelegraph.com.au/" > /dev/null
+26,56 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Courier_Mail" && cd "Courier_Mail" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.couriermail.com.au/" > /dev/null
+27,57 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Herald_Sun" && cd "Herald_Sun" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.heraldsun.com.au/" > /dev/null
+28,58 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Adelaide_Now" && cd "Adelaide_Now" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.adelaidenow.com.au/" > /dev/null
+29,59 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Brisbane_Times" && cd "Brisbane_Times" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.brisbanetimes.com.au/" > /dev/null
+30,0 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "ABC_News_(AU)" && cd "ABC_News_(AU)" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.abc.net.au/" > /dev/null
+31,1 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "ABC_News_(US)" && cd "ABC_News_(US)" && ~likeable/likeable/scripts/delta-scrape.sh "http://abcnews.go.com/" > /dev/null
+32,2 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Huffington_Post" && cd "Huffington_Post" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.huffingtonpost.com/" > /dev/null
+33,3 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "WSJ_(US)" && cd "WSJ_(US)" && ~likeable/likeable/scripts/delta-scrape.sh "http://online.wsj.com/home-page?_wsjregion=na,us&_homepage=/home/us" > /dev/null
+34,4 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "BuzzFeed" && cd "BuzzFeed" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.buzzfeed.com/" > /dev/null
+35,5 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Chicago_Sun-Times" && cd "Chicago_Sun-Times" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.suntimes.com/" > /dev/null
+36,6 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Chicago_Tribune" && cd "Chicago_Tribune" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.chicagotribune.com/" > /dev/null
+37,7 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Forbes" && cd "Forbes" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.forbes.com/" > /dev/null
+38,8 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Entertainment_Weekly" && cd "Entertainment_Weekly" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.ew.com/" > /dev/null
+39,9 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Hollywood_Reporter" && cd "Hollywood_Reporter" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.hollywoodreporter.com/" > /dev/null
+40,10 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Slate" && cd "Slate" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.slate.com/" > /dev/null
+41,11 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "LA_Daily_News" && cd "LA_Daily_News" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.dailynews.com/" > /dev/null
+42,12 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "NY_Daily_News" && cd "NY_Daily_News" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.nydailynews.com/" > /dev/null
+43,13 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Seattle_Times" && cd "Seattle_Times" && ~likeable/likeable/scripts/delta-scrape.sh "http://seattletimes.nwsource.com" > /dev/null
+44,14 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "People" && cd "People" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.people.com/" > /dev/null
+45,15 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "San_Francisco_Chronicle" && cd "San_Francisco_Chronicle" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.sfgate.com/" > /dev/null
+46,16 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Poltico" && cd "Poltico" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.politico.com/" > /dev/null
+47,17 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Time" && cd "Time" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.time.com/time/" > /dev/null
+48,18 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "TMZ" && cd "TMZ" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.tmz.com/" > /dev/null
+49,19 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Washington_Times" && cd "Washington_Times" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.washingtontimes.com/" > /dev/null
+50,20 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Vanity_Fair" && cd "Vanity_Fair" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.vanityfair.com/" > /dev/null
+51,21 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Yahoo_News_(US)" && cd "Yahoo_News_(US)" && ~likeable/likeable/scripts/delta-scrape.sh "http://news.yahoo.com/" > /dev/null
+52,22 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Yahoo7__News" && cd "Yahoo7__News" && ~likeable/likeable/scripts/delta-scrape.sh "http://au.news.yahoo.com/" > /dev/null
+53,23 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "New_Zealand_Herald" && cd "New_Zealand_Herald" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.nzherald.co.nz/" > /dev/null
+54,24 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Straits_Times_(Singapore)" && cd "Straits_Times_(Singapore)" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.straitstimes.com/" > /dev/null
+55,25 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Techcrunch" && cd "Techcrunch" && ~likeable/likeable/scripts/delta-scrape.sh "http://techcrunch.com/" > /dev/null
+56,26 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Mashable" && cd "Mashable" && ~likeable/likeable/scripts/delta-scrape.sh "http://mashable.com/" > /dev/null
+57,27 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "The_Daily_Beast" && cd "The_Daily_Beast" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.thedailybeast.com/" > /dev/null
+58,28 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Rolling_Stone" && cd "Rolling_Stone" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.rollingstone.com/" > /dev/null
+59,29 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Philly.com" && cd "Philly.com" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.philly.com/" > /dev/null
+0,30 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Australian_Financial_Review" && cd "Australian_Financial_Review" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.afr.com/" > /dev/null
+1,31 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Business_Insider" && cd "Business_Insider" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.businessinsider.com.au/" > /dev/null
+2,32 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Business_Spectator" && cd "Business_Spectator" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.businessspectator.com.au/" > /dev/null
+3,33 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Canberra_Times" && cd "Canberra_Times" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.canberratimes.com.au/" > /dev/null
+4,34 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Crikey" && cd "Crikey" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.crikey.com.au/" > /dev/null
+5,35 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Perth_Now" && cd "Perth_Now" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.perthnow.com.au/" > /dev/null
+6,36 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "SBS" && cd "SBS" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.sbs.com.au/" > /dev/null
+7,37 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Sky" && cd "Sky" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.skynews.com.au/home/" > /dev/null
+8,38 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "The_Conversation" && cd "The_Conversation" && ~likeable/likeable/scripts/delta-scrape.sh "http://theconversation.com/au" > /dev/null
+9,39 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "The_Global_Mail" && cd "The_Global_Mail" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.theglobalmail.org/" > /dev/null
+10,40 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "WA_today" && cd "WA_today" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.watoday.com.au/" > /dev/null
+11,41 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "NBC_News" && cd "NBC_News" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.nbcnews.com/" > /dev/null
+12,42 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "MSN" && cd "MSN" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.msn.com/?c=us" > /dev/null
+13,43 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "The_Roar" && cd "The_Roar" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.theroar.com.au/" > /dev/null
+14,44 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Junkee" && cd "Junkee" && ~likeable/likeable/scripts/delta-scrape.sh "http://junkee.com/" > /dev/null
+15,45 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Techly" && cd "Techly" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.techly.com.au/" > /dev/null
+16,46 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Fox_Sports" && cd "Fox_Sports" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.foxsports.com.au/" > /dev/null
+17,47 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "The_New_Daily" && cd "The_New_Daily" && ~likeable/likeable/scripts/delta-scrape.sh "http://thenewdaily.com.au/" > /dev/null
+18,48 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Ten_News" && cd "Ten_News" && ~likeable/likeable/scripts/delta-scrape.sh "http://tenplay.com.au/news/national" > /dev/null
+19,49 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Guardian.co.uk" && cd "Guardian.co.uk" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.theguardian.com/uk" > /dev/null
+20,50 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Yahoo!_News_UK" && cd "Yahoo!_News_UK" && ~likeable/likeable/scripts/delta-scrape.sh "http://uk.news.yahoo.com/uk/" > /dev/null
+21,51 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "MSN.co.uk" && cd "MSN.co.uk" && ~likeable/likeable/scripts/delta-scrape.sh "http://uk.msn.com/" > /dev/null
+22,52 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Sky_News_UK" && cd "Sky_News_UK" && ~likeable/likeable/scripts/delta-scrape.sh "http://news.sky.com/uk" > /dev/null
+23,53 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "METRO.co.uk" && cd "METRO.co.uk" && ~likeable/likeable/scripts/delta-scrape.sh "http://metro.co.uk/" > /dev/null
+24,54 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "AOL_News_UK" && cd "AOL_News_UK" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.aol.co.uk/" > /dev/null
+25,55 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Daily_Star" && cd "Daily_Star" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.dailystar.co.uk/" > /dev/null
+26,56 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "The_Times" && cd "The_Times" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.thetimes.co.uk/tto/news/" > /dev/null
+27,57 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "The_Sunday_Times" && cd "The_Sunday_Times" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.thesundaytimes.co.uk/sto/" > /dev/null
+28,58 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "London_Evening_Standard_" && cd "London_Evening_Standard_" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.standard.co.uk/" > /dev/null
+29,59 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Scotsman.com" && cd "Scotsman.com" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.scotsman.com/" > /dev/null
+30,0 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Daily_Express" && cd "Daily_Express" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.express.co.uk/" > /dev/null
+31,1 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Economist.com" && cd "Economist.com" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.economist.com/" > /dev/null
+32,2 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Belfast_Telegraph" && cd "Belfast_Telegraph" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.belfasttelegraph.co.uk/" > /dev/null
+33,3 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Morning_Star" && cd "Morning_Star" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.morningstaronline.co.uk/" > /dev/null
+34,4 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "NewsNow.co.uk" && cd "NewsNow.co.uk" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.newsnow.co.uk/h/" > /dev/null
+35,5 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Evening_Times_(Glasgow)" && cd "Evening_Times_(Glasgow)" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.eveningtimes.co.uk/" > /dev/null
+36,6 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Irish_Independent" && cd "Irish_Independent" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.independent.ie/" > /dev/null
+37,7 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Irish_Times" && cd "Irish_Times" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.irishtimes.com/" > /dev/null
+38,8 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "India_Today" && cd "India_Today" && ~likeable/likeable/scripts/delta-scrape.sh "http://indiatoday.intoday.in/" > /dev/null
+39,9 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Hindustan_Times" && cd "Hindustan_Times" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.hindustantimes.com/" > /dev/null
+40,10 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "The_Telegraph_India" && cd "The_Telegraph_India" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.telegraphindia.com/" > /dev/null
+41,11 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Deccan_Chronicle" && cd "Deccan_Chronicle" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.deccanchronicle.com/" > /dev/null
+42,12 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "NDTV" && cd "NDTV" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.ndtv.com/" > /dev/null
+43,13 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Indian_Express" && cd "Indian_Express" && ~likeable/likeable/scripts/delta-scrape.sh "http://indianexpress.com/" > /dev/null
+44,14 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Sunday_Times_(ZA)" && cd "Sunday_Times_(ZA)" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.timeslive.co.za/" > /dev/null
+45,15 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Mail_&_Guardian_(ZA)" && cd "Mail_&_Guardian_(ZA)" && ~likeable/likeable/scripts/delta-scrape.sh "http://mg.co.za/" > /dev/null
+46,16 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "News24_(ZA)" && cd "News24_(ZA)" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.news24.com/" > /dev/null
+47,17 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "The_Sowetan_(ZA)" && cd "The_Sowetan_(ZA)" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.sowetanlive.co.za/" > /dev/null
+48,18 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Stuff.co.nz" && cd "Stuff.co.nz" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.stuff.co.nz/" > /dev/null
+49,19 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "TVNZ" && cd "TVNZ" && ~likeable/likeable/scripts/delta-scrape.sh "http://tvnz.co.nz/news" > /dev/null
+50,20 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "3_News" && cd "3_News" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.3news.co.nz/" > /dev/null
+51,21 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "MSN_NZ" && cd "MSN_NZ" && ~likeable/likeable/scripts/delta-scrape.sh "http://msn.co.nz/" > /dev/null
+52,22 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Radio_NZ" && cd "Radio_NZ" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.radionz.co.nz/" > /dev/null
+53,23 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Otago_Daily_Times_(NZ)" && cd "Otago_Daily_Times_(NZ)" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.odt.co.nz/" > /dev/null
+54,24 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "South_China_Morning_Post" && cd "South_China_Morning_Post" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.scmp.com/frontpage/international" > /dev/null
+55,25 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "The_Verge" && cd "The_Verge" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.theverge.com/" > /dev/null
+56,26 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Atlantic_Wire" && cd "Atlantic_Wire" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.thewire.com/" > /dev/null
+57,27 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "The_Atlantic" && cd "The_Atlantic" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.theatlantic.com/" > /dev/null
+58,28 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Vice" && cd "Vice" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.vice.com/en_us" > /dev/null
+59,29 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Quartz" && cd "Quartz" && ~likeable/likeable/scripts/delta-scrape.sh "http://qz.com/" > /dev/null
+0,30 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "National_Journal" && cd "National_Journal" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.nationaljournal.com/" > /dev/null
+1,31 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "IOL_(ZA)" && cd "IOL_(ZA)" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.iol.co.za/" > /dev/null
+2,32 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "9News" && cd "9News" && ~likeable/likeable/scripts/delta-scrape.sh "http://9news.com.au" > /dev/null
+3,33 * * * * cd ~likeable/data/homepage-deltas/ && mkdir -p "Daily_Life" && cd "Daily_Life" && ~likeable/likeable/scripts/delta-scrape.sh "http://www.dailylife.com.au/" > /dev/null
