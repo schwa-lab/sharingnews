@@ -13,6 +13,8 @@ OUT_DIR = 'histogram-html'
 
 WIDTH = 25  # cm
 LEQ = '\xe2\x89\xa4'
+N_TICKS = 6
+TICK_WIDTH = WIDTH / (N_TICKS - 1)
 
 reader = csv.reader(sys.stdin)
 print(next(reader), file=sys.stderr)  # discard header
@@ -38,11 +40,23 @@ def group_label(g):
         return s[:-3] + 'K'
     return s
 
+def draw_ticks(max_cnt, fdomain):
+    # Ticks
+    print('<tr><th></th><td class="xticks">', file=fdomain)
+    for i in range(N_TICKS):
+        freq = int(max_cnt / (N_TICKS - 1) * i)
+        print('<span style="width: {}cm">{}</span>'.format(TICK_WIDTH, freq), file=fdomain, end='')
+    print('<tr><th></th><td>', file=fdomain)
+
 with open(os.path.join(OUT_DIR, 'style.css'), 'w') as fstyle:
     print('table {border-collapse: collapse}', file=fstyle)
     print('tr, td, th {margin: 0; padding: 0; border: 0; }', file=fstyle)
+    print('.hist .xticks span { border: none ; border-left: 1px solid black; font-size: .5cm }', file=fstyle)
+    print('.hist thead {border-bottom: 1px solid}', file=fstyle)
+    print('.hist tfoot {border-top: 1px solid}', file=fstyle)
     print('#twlegend {border: 1px solid black} ', file=fstyle)
     print('.hist, #twlegend {font-size: .2cm} ', file=fstyle)
+    print('.hist thead th {font-size: .4cm; text-align: center} ', file=fstyle)
     print('.hist th {text-align: right} ', file=fstyle)
     print('#twlegend td {text-align: center} ', file=fstyle)
     print('.hist tr span { border: 1px solid black; white-space: nowrap }', file=fstyle)
@@ -90,6 +104,11 @@ for domain, tuples in itertools.groupby(sorted(reader), operator.itemgetter(0)):
     print(domain, total, max_cnt, max(fb_group for _, fb_group, _, _, _, _ in tuples), file=sys.stderr)
     print('<h1>{}</h1>'.format(domain), file=fdomain)
     print('<table class="hist">', file=fdomain)
+
+    print('<thead><tr><th></th><th>Number of URLs</th></tr>', file=fdomain)
+    draw_ticks(max_cnt, fdomain)
+    print('</thead>', file=fdomain)
+
     prev = -1
     for fb_group, fb_tuples in itertools.groupby(tuples, operator.itemgetter(1)):
         for i in range(prev + 1, fb_group):
@@ -104,6 +123,10 @@ for domain, tuples in itertools.groupby(sorted(reader), operator.itemgetter(0)):
         row_parts.append('</span></td></tr>')
         print(''.join(row_parts), file=fdomain)  # avoid space between spans
         prev = fb_group
+
+    print('<tfoot>', file=fdomain)
+    draw_ticks(max_cnt, fdomain)
+    print('</tfoot>', file=fdomain)
     print('</table>', file=fdomain)
     print('<script>$(window).load(function() {$(".hist tr span > a").tooltip({html: true});});</script>', file=fdomain)
     fdomain.close()
