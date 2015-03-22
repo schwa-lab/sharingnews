@@ -71,7 +71,7 @@ DATABASES = {
         'NAME': 'likeable',
         'USER': 'likeable',
         'PASSWORD': secret.DB_PASSWORD,
-        'HOST': 'schwa09',
+        'HOST': 'schwa07',
         'PORT': '',
     }
 }
