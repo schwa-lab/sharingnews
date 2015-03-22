@@ -270,15 +270,21 @@ SHARES_FIELDS = ['fb_count_initial', 'fb_count_2h', 'fb_count_1d',
 FINE_HISTOGRAM_BINS = [0] + [10 ** (i / 10.) for i in range(67)]
 
 class ArticleQS(models.query.QuerySet):
-    def calc_share_quantiles(self, percentiles=[50, 75, 90, 95, 99], shares_field='fb_count_longterm'):  #  min_fb_created=None, max_fb_created=None):
+    def calc_share_quantiles(self, percentiles=[50, 75, 90, 95, 99], shares_field='fb_count_longterm', return_count=False):  #  min_fb_created=None, max_fb_created=None):
         nonzero_shares = (self.filter(**{shares_field + '__gt': 0})
                               .values_list(shares_field, flat=True)
                               .order_by(shares_field))
         #N = nonzero_shares.count()
         nonzero_shares = list(nonzero_shares)
         N = len(nonzero_shares)
-        return [nonzero_shares[int(N * p / 100)]
-                for p in percentiles]
+        import numpy as np
+        result = np.exp(np.percentile(np.log(nonzero_shares), percentiles))
+###        result =  [nonzero_shares[int(N * p / 100)]
+###                   for p in percentiles]
+        if return_count:
+            return N, result
+        else:
+            return result
 
     def with_logs(self, shares_fields=SHARES_FIELDS):
         new_fields = {'log_' + f: 'LOG("likeable_article"."{}")'.format(f) for f in shares_fields}
@@ -287,7 +293,7 @@ class ArticleQS(models.query.QuerySet):
     def bin_shares(self, bin_max, field_name='binned_shares', shares_field='fb_count_longterm'):
         cases = ' '.join('WHEN {} <= {} THEN {}'.format(shares_field, int(m), i)
                          for i, m in enumerate(bin_max))
-        return self.filter(fb_count_longterm__isnull=False).extra(select={field_name: 'CASE {} ELSE {} END'.format(cases, len(bin_max))})
+        return self.filter(**{shares_field + '__isnull': False}).extra(select={field_name: 'CASE {} ELSE {} END'.format(cases, len(bin_max))})
 
     def annotate_stats(self, field='fb_count_longterm'):
         return self.annotate(count=models.Count('pk'),

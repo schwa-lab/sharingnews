@@ -143,16 +143,21 @@ def collection(request, sig=None, period=None, start=None, end=None):
     #bins = articles.calc_share_quantiles(percentages)
     bins = [0, 1, 10, 100, 1000, 10000, 100000, 1000000]
 
-    bin_data = (articles.bin_shares(bins).values('binned_shares')
-                        .annotate_stats('fb_count_longterm').order_by('min'))
+    bin_data = (articles.bin_shares(bins, shares_field='fb_count_5d').values('binned_shares')
+                        .annotate_stats('fb_count_5d').order_by('min'))
     bin_data = list(bin_data)
     for i, entry in enumerate(bin_data):
         if entry['count'] == 0:
             bin_data = bin_data[:i]
             break
-        entry['example'] = (articles.bin_shares(bins)
-                                    .filter(fb_count_longterm__gte=entry['min'],
-                                            fb_count_longterm__lte=entry['max'])[0])  # order_by('?') is expensive
+        examples = (articles#.bin_shares(bins)
+                            .filter(fb_count_5d__gte=entry['min'],
+                                    fb_count_5d__lte=entry['max'])[:1])  # order_by('?') is expensive
+        examples = list(examples)
+        if examples:
+            entry['example'] = examples[0]
+        else:
+            print('No example for, entry')
 
     fetched = articles.filter(fetch_status__isnull=False)
     fetched_success = fetched.filter(fetch_status__gte=200, fetch_status__lt=300)
@@ -358,6 +363,7 @@ def extractor_report(request):
 # TODO: perhaps move to models.Article
 MEASURE_FIELDS = {
     'fb-total-longterm': F('fb_count_longterm'),
+    'fb-total-5d': F('fb_count_5d'),
 }
 
 # XXX: this may belong in models
