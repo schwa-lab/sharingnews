@@ -56,13 +56,12 @@ def fetch_with_refresh(url, accept_encodings=HTTP_ENCODINGS, max_delay=20, user_
                 enc = enc.group(1)
                 if enc not in accept_encodings:
                     raise
-                print('>> Removing encoding {!r} for {!r}'.format(enc, url), file=sys.stderr)
+                print('>> Removing encoding {!r} for {!r}'.format(enc, url.encode('utf8')), file=sys.stderr)
                 try:
                     accept_encodings.remove(enc)
                 except AttributeError:
                     pass
                 continue
-            print('>', response, 'to', url)
             hops.extend(response.history)
             hops.append(response)
             if response.status_code >= 400:
