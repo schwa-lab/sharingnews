@@ -15,6 +15,8 @@ from likeable.models import FINE_HISTOGRAM_BINS
 ap = argparse.ArgumentParser()
 ap.add_argument('--min-samples', type=int, default=2000)
 ap.add_argument('--in-file', type=argparse.FileType('r'), default=sys.stdin)
+ap.add_argument('--title-fmt', default='{domain}')
+ap.add_argument('--ext', default='pdf')
 ap.add_argument('out_dir')
 args = ap.parse_args()
 
@@ -47,8 +49,8 @@ for domain, rows in by_domain.items():
         fig, ax = plt.subplots()
         ax.bar(idx, [freq_dist[i] for i in idx])
         ax.set_ylabel('Frequency'.format(freq_dist[0]))
-        ax.set_xlabel('{} count at 5 days'.format(service))
-        ax.set_title('{} in first half of 2014'.format(domain))
+        ax.set_xlabel('{} at 5 days'.format('Facebook shares' if service == 'fb' else 'Twitter shares'))
+        ax.set_title(args.title_fmt.format(**locals()))
         xticks = idx[1::10]
         ax.set_xticks(xticks)
         ymax = max(v for k, v in freq_dist.items() if k > 0)
@@ -56,7 +58,7 @@ for domain, rows in by_domain.items():
             ax.text(0, ymax * 1.05, freq_dist[0], ha='center')
         ax.set_ylim(0, ymax * 1.05)
         ax.set_xticklabels([readable_number(FINE_HISTOGRAM_BINS[i]) for i in xticks])
-        path = '{}{}{}-{}.png'.format(args.out_dir, os.path.sep, domain, service)
+        path = '{}{}{}-{}.{}'.format(args.out_dir, os.path.sep, domain, service, args.ext)
         plt.savefig(path)
         print('wrote to ' + path)
 
@@ -69,13 +71,13 @@ for domain, rows in by_domain.items():
     ax.imshow([[math.log(1 + freq_dist[i, j]) for i in idx[1:]] for j in idx[1:]],
               interpolation='nearest', cmap='Blues')
     ticks = idx[1::10]
-    ax.set_title('{} in first half of 2014'.format(domain))
+    ax.set_title(args.title_fmt.format(**locals()))
     ax.set_xticks(ticks)
     ax.set_yticks(ticks)
     ax.set_xticklabels([readable_number(FINE_HISTOGRAM_BINS[i]) for i in xticks])
     ax.set_yticklabels([readable_number(FINE_HISTOGRAM_BINS[i]) for i in xticks])
-    ax.set_xlabel('fb count at 5 days')
-    ax.set_ylabel('tw count at 5 days')
-    path = '{}{}{}-fb-vs-tw.png'.format(args.out_dir, os.path.sep, domain)
+    ax.set_xlabel('Facebook shares at 5 days')
+    ax.set_ylabel('Twitter shares at 5 days')
+    path = '{}{}{}-fb-vs-tw.{}'.format(args.out_dir, os.path.sep, domain, args.ext)
     fig.savefig(path)
     print('wrote to ' + path)
