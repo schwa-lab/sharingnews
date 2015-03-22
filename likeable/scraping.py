@@ -34,12 +34,19 @@ class FetchException(Exception):
         self.code = code
 
 
-def fetch_with_refresh(url, accept_encodings=HTTP_ENCODINGS, max_delay=20):
+USER_AGENTS = {
+    'fb': 'facebookexternalhit/1.1 (+http(s)://www.facebook.com/externalhit_uatext.php)',
+}
+
+
+def fetch_with_refresh(url, accept_encodings=HTTP_ENCODINGS, max_delay=20, user_agent_spoof=None):
     try:
         hops = []
         refresh = True
         while refresh is not None:
             headers = {'accept-encoding': ', '.join(accept_encodings or HTTP_ENCODINGS)}
+            if user_agent_spoof is not None:
+                headers['User-Agent'] = USER_AGENTS[user_agent_spoof]
             try:
                 response = requests.get(url, timeout=10, headers=headers)
             except requests.exceptions.ContentDecodingError as e:

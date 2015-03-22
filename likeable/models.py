@@ -394,7 +394,7 @@ class Article(models.Model):
     def get_absolute_url(self):
         return reverse('likeable.views.article', kwargs={'id': self.id})
 
-    def download(self, force=False, save=True, accept_encodings=None):
+    def download(self, force=False, save=True, accept_encodings=None, user_agent_spoof='fb'):
         if self.fetch_status == 200 and self.downloaded is not None:  # FIXME: this second cond'n will raise an error
             if force:
                 self.fetch_status = None
@@ -404,7 +404,7 @@ class Article(models.Model):
 
         timestamp = utcnow()
         try:
-            hops = fetch_with_refresh(self.url, accept_encodings)
+            hops = fetch_with_refresh(self.url, accept_encodings, user_agent_spoof=user_agent_spoof)
         except FetchException as exc:
             if exc.code is not None:
                 assert exc.code < 0
@@ -443,7 +443,8 @@ class Article(models.Model):
         downloaded = DownloadedArticle(article=self,
                                        html=content,
                                        fetch_when=timestamp,
-                                       canonical_url=canonical)
+                                       canonical_url=canonical,
+                                       user_agent_spoof=user_agent_spoof)
         parsed = downloaded.parsed_html
         if parsed is not None:
             downloaded.structure_sketch = sketch_doc(parsed)
@@ -524,6 +525,7 @@ class DownloadedArticle(models.Model):
     fetch_when = models.DateTimeField(null=True)
     scrape_when = models.DateTimeField(null=True)  # set to signature's modified_when, not scrape time
     canonical_url = models.TextField(null=True)
+    user_agent_spoof = models.CharField(max_length=10, null=True)
 
     @property
     def needs_extraction(self):
