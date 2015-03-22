@@ -2,6 +2,7 @@
 from __future__ import print_function, division
 import sys
 import csv
+import argparse
 
 import django
 from django.db.models import Count
@@ -17,8 +18,13 @@ def bin_edges(i):
 
 django.setup()
 
+ap = argparse.ArgumentParser()
+ap.add_argument('--since', default='2014-01-01 00:00Z')
+ap.add_argument('--until', default='2014-07-01 00:00Z')
+ap.add_argument('--with-examples', default=False, action='store_true')
+args = ap.parse_args()
 
-articles = Article.objects.filter(fetch_status=200).filter(spider_when__gte='2014-01-01 00:00Z', spider_when__lt='2014-07-01 00:00Z')
+articles = Article.objects.filter(fetch_status=200, spider_when__gte=args.since, spider_when__lt=args.until)
 articles = articles.filter(fb_count_5d__isnull=False, tw_count_5d__isnull=False)
 articles = articles.bin_shares(FINE_HISTOGRAM_BINS, 'fb_binned', 'fb_count_5d').bin_shares(FINE_HISTOGRAM_BINS, 'tw_binned', 'tw_count_5d')
 hist = articles.values_list('url_signature__base_domain', 'fb_binned', 'tw_binned').annotate(n=Count('pk'))
@@ -34,14 +40,19 @@ def group_to_min_shares(grp):
 ###           .values_list('url_signature__base_domain', 'fb_binned', 'tw_binned', 'n', 'min_fb', 'max_fb', 'min_tw', 'max_tw', 'example')
 
 writer = csv.writer(sys.stdout)
-writer.writerow(('domain', 'fb@5d group', 'tw@5d group', 'frequency', 'example title', 'example url'))
+header = ('domain', 'fb@5d group', 'tw@5d group', 'frequency', 'example title', 'example url')
+if not args.with_examples:
+    header = header[:-2]
+writer.writerow(header)
 ###writer.writerow(('domain', 'fb@5d group', 'tw@5d group', 'frequency', 'min fb', 'max fb', 'min tw', 'max tw', 'example'))
 for row in hist:
     # slow:
     min_fb, max_fb = bin_edges(row[1])
     min_tw, max_tw = bin_edges(row[2])
-    example = Article.objects.filter(url_signature__base_domain=row[0], fb_count_5d__gt=min_fb, fb_count_5d__lte=max_fb, tw_count_5d__gt=min_tw, tw_count_5d__lte=max_tw).order_by('?').first()
-    writer.writerow(row + (example.title.encode('utf8'), example.url.encode('utf8')))
+    if args.with_examples:
+        example = Article.objects.filter(url_signature__base_domain=row[0], fb_count_5d__gt=min_fb, fb_count_5d__lte=max_fb, tw_count_5d__gt=min_tw, tw_count_5d__lte=max_tw).order_by('?').first()
+        row += ((example.title or u'').encode('utf8'), example.url.encode('utf8'))
+    writer.writerow(row)
 
 # Fast way to get example per group is to populate table foo with boundaries and
 # explain select (select url from likeable_article where fb_count_longterm >= min_shares and fb_count_longterm < max_shares limit 1), min_shares, max_shares from foo;

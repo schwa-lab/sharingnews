@@ -5,14 +5,20 @@ import math
 import sys
 import csv
 from collections import defaultdict
+import argparse
+import os
 
 import matplotlib.pyplot as plt
 
 from likeable.models import FINE_HISTOGRAM_BINS
 
-MIN_SAMPLES = 2000
+ap = argparse.ArgumentParser()
+ap.add_argument('--min-samples', type=int, default=2000)
+ap.add_argument('--in-file', type=argparse.FileType('r'), default=sys.stdin)
+ap.add_argument('out_dir')
+args = ap.parse_args()
 
-reader = csv.DictReader(sys.stdin)
+reader = csv.DictReader(args.in_file)
 by_domain = defaultdict(list)
 for row in reader:
     by_domain[row['domain']].append(row)
@@ -36,7 +42,7 @@ for domain, rows in by_domain.items():
         freq_dist = defaultdict(int)
         for row in rows:
             freq_dist[int(row[service + '@5d group'])] += int(row['frequency'])
-        if sum(v for k, v in freq_dist.items() if k > 0) < MIN_SAMPLES:
+        if sum(v for k, v in freq_dist.items() if k > 0) < args.min_samples:
             continue
         fig, ax = plt.subplots()
         ax.bar(idx, [freq_dist[i] for i in idx])
@@ -50,7 +56,7 @@ for domain, rows in by_domain.items():
             ax.text(0, ymax * 1.05, freq_dist[0], ha='center')
         ax.set_ylim(0, ymax * 1.05)
         ax.set_xticklabels([readable_number(FINE_HISTOGRAM_BINS[i]) for i in xticks])
-        path = 'histogram-plots-new/{}-{}.png'.format(domain, service)
+        path = '{}{}{}-{}.png'.format(args.out_dir, os.path.sep, domain, service)
         plt.savefig(path)
         print('wrote to ' + path)
 
@@ -58,7 +64,7 @@ for domain, rows in by_domain.items():
     freq_dist = defaultdict(int)
     for row in rows:
         freq_dist[int(row['fb@5d group']), int(row['tw@5d group'])] = int(row['frequency'])
-    if sum(v for k, v in freq_dist.items() if k > 0) < MIN_SAMPLES:
+    if sum(v for k, v in freq_dist.items() if k > 0) < args.min_samples:
         continue
     ax.imshow([[math.log(1 + freq_dist[i, j]) for i in idx[1:]] for j in idx[1:]],
               interpolation='nearest', cmap='Blues')
@@ -70,6 +76,6 @@ for domain, rows in by_domain.items():
     ax.set_yticklabels([readable_number(FINE_HISTOGRAM_BINS[i]) for i in xticks])
     ax.set_xlabel('fb count at 5 days')
     ax.set_ylabel('tw count at 5 days')
-    path = 'histogram-plots-new/{}-fb-vs-tw.png'.format(domain)
+    path = '{}{}{}-fb-vs-tw.png'.format(args.out_dir, os.path.sep, domain)
     fig.savefig(path)
     print('wrote to ' + path)
