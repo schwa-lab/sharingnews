@@ -514,6 +514,11 @@ class DownloadedArticleQS(models.query.QuerySet):
             q = q.values(*keys)
         return q
 
+    def delete(self, fetch_status=None):
+        ids = list(self.values_list('article_id', flat=True))
+        Article.objects.filter(pk__in=ids).update(fetch_status=fetch_status)
+        return super(DownloadedArticleQS, DownloadedArticle.objects.filter(article_id__in=ids)).delete()
+
 
 class DownloadedArticleManager(models.Manager):
     def get_queryset(self):
