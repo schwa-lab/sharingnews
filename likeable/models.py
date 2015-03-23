@@ -441,6 +441,8 @@ class Article(models.Model):
 
         content = unicode_from_www(response)
         canonical = extract_canonical(content)
+        if canonical is None:
+            canonical = response.url
         if canonical == self.url:
             canonical = None
 
