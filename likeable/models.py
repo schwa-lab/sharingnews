@@ -123,7 +123,7 @@ class UrlSignature(models.Model):
     # When updating defaults, run makemigrations, and scripts/reextract-defaults.py
     DEFAULT_SELECTORS = {
         'headline': DEFAULT_CODE + '((text))[itemprop~="headline"]; ((text))h1; [property~="og:title"]::attr(content)',
-        'body_text': DEFAULT_CODE + '((text))((readability.summary))p',
+        'body_text': DEFAULT_CODE + '((text))[property~="articleBody"] > p;\n((text))[itemprop~="articleBody"] > p;\n((text))((readability.summary))p',
         'byline': DEFAULT_CODE + '((text))[itemprop~=author];\n((text)).hnews .author .fn;\n((text))[rel=author];((text)).byline',
         # there are more variations of the following that could be generated e.g. content attr, text content (worth the cost for non-ISO?)
         'dateline': DEFAULT_CODE + '[property~=datePublished]::attr(datetime); [property~=dateCreated]::attr(datetime); [itemprop~=datePublished]::attr(datetime); [itemprop~=dateCreated]::attr(datetime)',
