@@ -75,10 +75,10 @@ def strip_subdomains(domain):
     strip_subdomains._cache[domain] = out
     return out
 
-OG_URL_TAG_RE = re.compile(r'(?i)<meta\b[^>]*\bproperty=.og:title[^>]*')
+OG_URL_TAG_RE = re.compile(r'(?i)<meta\b[^>]*\bproperty=.og:url[^>]*')
+OG_URL_ATTR_RE = re.compile(r'(?i)\bcontent=(["\']|)(h.+?)\1(?:[\s>]|$)')
 CANONICAL_TAG_RE = re.compile(r'(?i)<link\b[^>]*\brel=.canonical[^>]*')
-CANONICAL_URL_RE = re.compile(r'\bhref=(["\']|)(h.+?)\1(?:[\s>]|$)')
-OG_URL_ATTR_RE = re.compile(r'\bcontent=(["\']|)(h.+?)\1(?:[\s>]|$)')
+CANONICAL_URL_RE = re.compile(r'(?i)\bhref=(["\']|)(h.+?)\1(?:[\s>]|$)')
 
 
 def _extract_canonical(html, relative_to, tag_re, attr_re):
@@ -102,9 +102,9 @@ def extract_canonical(html, relative_to=None):
 
 
 def extract_facebook_canonical(html, relative_to=None):
-    canonical = extract_canonical(html, relative_to)
+    canonical = _extract_canonical(html, relative_to, OG_URL_TAG_RE, OG_URL_ATTR_RE)
     if canonical is None:
-        canonical = _extract_canonical(html, relative_to, OG_URL_TAG_RE, OG_URL_ATTR_RE)
+        canonical = extract_canonical(html, relative_to)
     return canonical
 
 
