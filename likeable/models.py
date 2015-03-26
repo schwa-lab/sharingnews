@@ -17,7 +17,7 @@ from django.core.urlresolvers import reverse
 from dateutil.parser import parse as parse_date
 import requests
 
-from .cleaning import xml_unescape, compress_html, extract_canonical, unicode_from_www
+from .cleaning import xml_unescape, compress_html, extract_facebook_canonical, unicode_from_www
 from .scraping import extract, DEFAULT_CODE, DOMAIN_DEFAULT_CODE, fetch_with_refresh, get_mime, FetchException
 from .models_helpers import IntArrayField
 from .structure import sketch_doc
@@ -427,7 +427,7 @@ class Article(models.Model):
             logger.warning('Unknown MIME {!r} when fetching {}'.format(mime, self))
 
         content = unicode_from_www(response)
-        canonical = extract_canonical(content)
+        canonical = extract_facebook_canonical(content)
         if canonical == self.url:
             canonical = None
 
