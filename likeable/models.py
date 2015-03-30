@@ -537,7 +537,7 @@ class DownloadedArticle(models.Model):
     html = models.TextField()  # fetched HTML content normed to UTF-8, with some lossy compression
     fetch_when = models.DateTimeField(null=True)
     scrape_when = models.DateTimeField(null=True)  # set to signature's modified_when, not scrape time
-    canonical_url = models.TextField(null=True)
+    canonical_url = models.TextField(null=True, db_index=True)
     user_agent_spoof = models.CharField(max_length=10, null=True)
 
     @property
