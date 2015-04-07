@@ -249,6 +249,11 @@ class UrlSignature(models.Model):
         return '<UrlSignature: {0.signature} |{0.status}>'.format(self)
 
 
+class BlacklistedUrl(models.Model):
+    # URL that has been identified as non-article (in broad sense); content not useful
+    url = models.URLField(max_length=256, primary_key=True)
+
+
 class Site(models.Model):
     """Replicates a Likeable Engine table"""
     id = models.IntegerField(primary_key=True)
@@ -372,6 +377,7 @@ class Article(models.Model):
         'effectively empty content': -3,
         'timeout': -10,
         'server repeatedly unavailable': -503,
+        'blacklisted': -200,  # fetch succeeded, but URL is homepage/portal
     }
     _accept_mime = {'text/html', 'application/xml', 'text/xml'}.__contains__  # accept without note
     _reject_mime = re.compile('^(application/pdf$|image/|audio/|video/)').match  # accept without note
@@ -443,6 +449,11 @@ class Article(models.Model):
         canonical = extract_facebook_canonical(content)
         if canonical is None:
             canonical = response.url
+        if BlacklistedUrl.objects.filter(url=canonical).exists():
+            self.fetch_status = self.CUSTOM_FETCH_STATUS['blacklisted']
+            if save:
+                self.save()
+            return None, hops
         if canonical == self.url:
             canonical = None
 
