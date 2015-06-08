@@ -3,7 +3,8 @@
 <ul>
 	<li><a href="{% url 'article_raw' article.id %}">View fetched</a></li>
 	<li><a href="{% url 'article_raw' article.id %}?style=none">View unstyled</a></li>
-	<li><a href="{% url 'article_raw' article.id %}?style=selector">View with CSS selectors</a></li>
+    <li><a href="{% url 'article_raw' article.id %}?debug=true">View with CSS selectors</a></li>
+	<li><a href="{% url 'article_raw' article.id %}?style=unstyled&debug=true">View unstyled with CSS selectors</a></li>
 </ul>
 <h2>Extracted fields</h2>
 {% if article.downloaded.needs_extraction %}

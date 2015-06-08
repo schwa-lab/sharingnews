@@ -38,12 +38,13 @@ def article_raw(request, id):
     downloaded = get_object_or_404(DownloadedArticle, article_id=id)
     html = compress_html(downloaded.html)
     style = request.GET.get('style')
+    debug = request.GET.get('debug')
 
     html = insert_base_href(html, downloaded.article.url)
 
-    if style in ('none', 'selector'):
+    if style == 'none':
         html = re.sub(r'(?i)<link[^>]*\brel=(["\']?)stylesheet[^>]*>', '', html)
-    if style == 'selector':
+    if debug:
         SELECTOR_CONTENT = ('<link rel="stylesheet" href="{}">'
                             '<script type="text/javascript" src="{}"></script>'.format(
                                 request.build_absolute_uri(static('css/css-debug.css')),

@@ -45,7 +45,7 @@ Work on another field:
 {% for article in dev_sample %}
 <tr class="deventry devsample{{article.id}}" data-id="{{article.id}}">
     <td><a href="{{ article.get_absolute_url|iriencode }}" title="View {{article.url|iriencode}}">{{article.title|default:'title missing'}}</a></td>
-    <td><a href="{% url 'article_raw' article.id %}?style=selector" title="Debug CSS selectors">Debug</a></td>
+    <td><a href="{% url 'article_raw' article.id %}?debug=true" title="Debug CSS selectors">Debug</a></td>
     <td><a href="{{article.url|iriencode}}">{{article.url_signature.base_domain}}</a></td>
     <td>{{article.spider_when|date:"Y-m-d"}}</td>
     <td>{{article.extracted}}</td>
