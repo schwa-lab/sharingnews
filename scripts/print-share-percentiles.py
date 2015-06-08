@@ -28,7 +28,7 @@ for domain in sys.stdin:
     if domain:
         dom_articles = articles.filter(url_signature__base_domain=domain)
     try:
-        N, quantiles = dom_articles.calc_share_quantiles(percentiles, 'fb_count_5d', return_count=True)
+        N, quantiles = dom_articles.calc_share_quantiles(percentiles, args.field, return_count=True)
         out.writerow([domain, N] + list(quantiles))
     except Exception as e:
         print('Failure on', domain, repr(e), file=sys.stderr)
