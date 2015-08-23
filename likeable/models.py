@@ -295,7 +295,7 @@ class ArticleQS(models.query.QuerySet):
         new_fields = {'log_' + f: 'LOG("likeable_article"."{}")'.format(f) for f in shares_fields}
         return self.extra(select=new_fields)
 
-    def bin_shares(self, bin_max, field_name='binned_shares', shares_field='fb_count_longterm'):
+    def bin_shares(self, bin_max=FINE_HISTOGRAM_BINS, field_name='binned_shares', shares_field='fb_count_longterm'):
         cases = ' '.join('WHEN {} <= {} THEN {}'.format(shares_field, int(m), i)
                          for i, m in enumerate(bin_max))
         return self.filter(**{shares_field + '__isnull': False}).extra(select={field_name: 'CASE {} ELSE {} END'.format(cases, len(bin_max))})
