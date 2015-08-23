@@ -65,10 +65,8 @@ args = ap.parse_args()
 
 fqueries = []
 
-if args.since is not None or args.until is not None:
-    since = args.since + 'T00:00:00Z' if args.since is not None else '*'
-    until = args.until + 'T00:00:00Z' if args.until is not None else '*'
-    fqueries.append('pub_date:[%s TO %s}' % (since, until))
+since = '[' + args.since + 'T00:00:00Z' if args.since is not None else '[*'
+until = args.until + 'T00:00:00Z}' if args.until is not None else '*]'
 
 expr_iter = iter(args.fqueries)
 while True:
@@ -88,24 +86,49 @@ fq = ' AND '.join(fqueries)
 q = ' '.join(args.text_queries)
 
 
+from joblib import Memory
+memory = Memory('/tmp/foobar', verbose=0)
+
+@memory.cache
+def delayed_get(*args, **kwargs):
+    time.sleep(random.random() * 1.5)
+    resp = requests.get(*args, **kwargs)
+    return resp
+
 docs = []
 PER_PAGE = 10  # fixed, server-side
 page = 0
 n_pages = None
 while n_pages is None or page < n_pages:
     # XXX: could use until instead of page for more precision
-    params = {'fq': fq, 'q': q, 'limit': 10, 'page': page, 'type': 'article,blogpost'}
-    time.sleep(random.random())
-    print(params)
-    resp = requests.get('http://topics.nytimes.com/svc/timestopic/v1/topic.json', params=params).json()['response']
-    if n_pages is None:
+    cur_fq = fq + ' AND pub_date:%s TO %s' % (since, until)
+    params = {'fq': cur_fq, 'q': q, 'limit': 10, 'page': page, 'type': 'article,blogpost'}
+    try:
+        resp = delayed_get('http://topics.nytimes.com/svc/timestopic/v1/topic.json', params=params)
+        resp.raise_for_status()
+        resp = resp.json()['response']
+    except requests.exceptions.HTTPError as exc:
+        print('Got {!r}\nFor {!r}'.format(exc, params), file=sys.stderr)
+        raise
+    except ValueError:
+        print('Could not decode JSON: {}'.format(resp.text), file=sys.stderr)
+        raise
+
+    if page == 0:
         hits = resp['meta']['hits']
-        print('Found {} hits for fq={!r} and q={!r}'.format(hits, fq, q))
+        print('Found {} hits for fq={!r} and q={!r}'.format(hits, params['fq'], params['q']), file=sys.stderr)
         if hits > PER_PAGE:
             assert len(resp['docs']) == PER_PAGE
         n_pages = (hits + PER_PAGE - 1) // PER_PAGE
+
     docs.extend(resp['docs'])
     page += 1
+
+    if page > 100:
+        until = resp['docs'][-1]['pub_date'] + '}'
+        page = 0
+        n_pages = None
+
 
 def urls_to_fb_ids(urls, db_only=False):
     # TODO: move to models
