@@ -6,8 +6,6 @@ from xml.sax.saxutils import escape as xml_escape
 import random
 import itertools
 import operator
-import io
-import csv
 
 from jsonview.decorators import json_view
 from django.shortcuts import render_to_response, redirect, get_object_or_404
@@ -22,7 +20,8 @@ from .models import SpideredUrl, Article, DownloadedArticle, UrlSignature, dev_s
 from .scraping import extract
 from .cleaning import compress_html, insert_base_href
 from .view_helpers import send_zipfile
-from .export import build_basename, export_folders
+from .export import gen_export_folders
+from .forms import ExportForm
 
 
 def article(request, id):
@@ -455,50 +454,6 @@ def _get_export_contents(groups, queryset):
         yield out
 
 
-def _gen_export_folders(groups, articles, BATCH_SIZE=200):
-    """
-
-    - groups is a list of lists of (article id, measure)
-    - articles is a queryset
-
-    """
-    index_file = io.BytesIO()
-    index_writer = csv.writer(index_file)
-    index_writer.writerow(['group', 'share_measure', 'filename', 'id', 'url', 'pubdate', 'body_wordcount'])
-    group_digits = len(str(len(groups)))
-    for i, group in enumerate(groups):
-        group_dir = 'group{:0{n}d}/'.format(i + 1, n=group_digits)
-        group_num = str(i + 1)
-        group = iter(group)
-        while True:
-            batch = itertools.islice(group, BATCH_SIZE)
-            batch = list(batch)
-            if not batch:
-                break
-
-            lookup = articles.in_bulk([article_id for article_id, measure in batch])
-            for article_id, measure in batch:
-                article = lookup[article_id]
-                basename = build_basename(article)
-                if article.downloaded.body_text is None:
-                    word_count = 0
-                else:
-                    word_count = len(article.downloaded.body_text.split())
-                try:
-                    pubdate = article.downloaded.parse_datetime().isoformat()
-                except Exception:  # XXX should be more specific
-                    pubdate = ''
-                index_writer.writerow([group_num, measure, basename.encode('utf8'),
-                                       article.id, article.url,
-                                       pubdate,
-                                       word_count])
-                for filename, content in export_folders(article, basename=basename, ascii=True):
-                    yield group_dir + filename, content
-
-        index_file.seek(0)
-        yield 'index.csv', index_file
-
-
 excluded_domains = '''
 buzzfeed.com
 cracked.com
@@ -563,23 +518,23 @@ def post_export(request, data):
 
     # Each exporter can generate files, and zipping logic can be external, but do we need an approach that can return a page to viewer?
     # ZipFile can either write locally, or can write to a DropBox chunked uploader
-    return send_zipfile(request, _gen_export_folders(groups, articles), 'export.zip')
+    return send_zipfile(request, gen_export_folders(groups, articles), 'export.zip')
 
 
 
 def export(request):
+    # FIXME FIXME FIXME
     if request.method == 'POST':
-        return post_export(request, request.POST)
-###        form = ExportForm(request.POST)
-###        if form.is_valid():
-###            return post_export(request, form.cleaned_data)
+        form = ExportForm(request.POST)
+        if form.is_valid():
+            return post_export(request, form.cleaned_data)
     else:
         preset = request.GET.get('preset')
-###        if preset is None:
-###            form = ExportForm()
-###        else:
-###            # TODO: load
-###            pass
+        if preset is None:
+            form = ExportForm()
+        else:
+            # TODO: load
+            pass
     # TODO: load list of presets
-    return render_to_response('export.html',
+    return render_to_response('export.html', {'form': form},
                               context_instance=RequestContext(request))

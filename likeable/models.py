@@ -583,13 +583,14 @@ class DownloadedArticle(models.Model):
             return
         return self.body_text.strip().partition(u'\n')[0]
 
-    def parse_datetime(self):
+    def parse_datetime(self, warn=True):
         if self.dateline is None:
             return None
         try:
             return parse_date(self.dateline.split('yyyy-')[0])  # HACK: fix some dodgy ISO formatting
         except Exception:
-            logger.warn('Failed to parse date: {!r}'.format(self.dateline))
+            if warn:
+                logger.warn('Failed to parse date: {!r}'.format(self.dateline))
 
     def _get_meta_fields(self):
         for tag in re.findall('(?i)<meta\s.*?>', self.html):
