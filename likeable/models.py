@@ -679,12 +679,13 @@ class DownloadedArticle(models.Model):
 
 def dev_sample_diagnostics():
     sig_counters = defaultdict(Counter)
-    sig_n_dev = Counter()
+    sig_n_dev = defaultdict(Counter)
 
-    for data in DownloadedArticle.objects.filter(in_dev_sample=True).add_diagnostics(values=['article__url_signature']):
+    for data in DownloadedArticle.objects.filter(in_dev_sample=True).add_diagnostics(values=['article__url_signature', 'structure_group']):
         sig_id = data.pop('article__url_signature')
-        sig_counters[sig_id].update(k for k, v in data.iteritems() if v)
-        sig_n_dev[sig_id] += 1
+        sgroup = data.pop('structure_group')
+        sig_counters[sig_id, sgroup].update(k for k, v in data.iteritems() if v)
+        sig_n_dev[sig_id][sgroup] += 1
 
     no_dev_sample = []
     signatures = {sig.id: sig for sig in UrlSignature.objects.filter(id__in=sig_n_dev)}
@@ -692,12 +693,13 @@ def dev_sample_diagnostics():
         if sig_id not in sig_counters:
             no_dev_sample.append(sig_id)
             continue
-        counter = sig_counters[sig_id]
-        nested = defaultdict(dict)
-        for k, v in counter.iteritems():
-            field, criterion = k.split('_has_')
-            nested[field][criterion] = v
-        yield signatures[sig_id], count, sig_n_dev[sig_id], nested
+        for sgroup in sig_n_dev[sig_id]:
+            counter = sig_counters[sig_id, sgroup]
+            nested = defaultdict(dict)
+            for k, v in counter.iteritems():
+                field, criterion = k.split('_has_')
+                nested[field][criterion] = v
+            yield signatures[sig_id], sgroup, count, sig_n_dev[sig_id][sgroup], nested
 
 
 class FacebookStat(object):

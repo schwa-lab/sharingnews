@@ -347,13 +347,13 @@ def extractor_report(request):
     min_n_dev = int(request.GET.get('min_n_dev', 5))
     print(repr((min_n_articles, min_n_dev)))
     def get_rows():
-        for sig, n_articles, n_dev, diagnostics in dev_sample_diagnostics():
+        for sig, sgroup, n_articles, n_dev, diagnostics in dev_sample_diagnostics():
             if n_articles < min_n_articles:
                 continue
             if n_dev < min_n_dev:
                 continue
             for field in DownloadedArticle.EXTRACTED_FIELDS:
-                yield sig, n_articles, n_dev, field, sig.get_selector(field), {k: v / n_dev * 100 for k, v in diagnostics[field].iteritems()}
+                yield sig, sgroup, n_articles, n_dev, field, sig.get_selector(field), {k: v / n_dev * 100 for k, v in diagnostics[field].iteritems()}
     return render_to_response('extractor-report.html',
                               {'columns': DownloadedArticle.DIAGNOSTIC_EXTRAS,
                                'rows': get_rows()},
