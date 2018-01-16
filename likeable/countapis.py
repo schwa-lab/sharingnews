@@ -96,10 +96,15 @@ class FBBatchFetcher(object):
         time.sleep(self.wait)
         self.n_reqs += 1
 
-    def fetch_auto(self, urls):
-        if COMMA_RE.search(''.join(urls)):
-            return self.fetch_batch(urls)
-        return self.fetch_comma(urls)
+    def fetch_auto(self, urls, batch_size=50):
+        out = []
+        for i in range(0, len(urls), batch_size):
+            batch = urls[i:i + batch_size]
+            if COMMA_RE.search(''.join(batch)):
+                batch_res = self.fetch_batch(batch)
+            batch_res = self.fetch_comma(batch)
+            out.append(batch_res[1:-1])
+        return '{%s}' % (', '.join(filter(None, out)))
 
     def fetch_comma(self, urls, _depth=1):
         if not urls:

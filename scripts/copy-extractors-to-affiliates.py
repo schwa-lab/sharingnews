@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from __future__ import print_function
 from collections import defaultdict
 
@@ -8,9 +9,13 @@ from likeable.models import UrlSignature, EXTRACTED_FIELDS
 django.setup()
 
 AFFILIATE_GROUPS = [
-    ('fairfax', ['smh.com.au', 'theage.com.au', 'brisbanetimes.com.au', 'canberratimes.com.au', 'watoday.com.au', 'brisbanetimes.com.au', 'dailylife.com.au',]),
+    ('fairfax', ['smh.com.au', 'theage.com.au', 'brisbanetimes.com.au', 'canberratimes.com.au', 'watoday.com.au', 'brisbanetimes.com.au', 'dailylife.com.au', 'domain.com.au', 'drive.com.au',]),
     ('news au', ['couriermail.com.au', 'heraldsun.com.au', 'theaustralian.com.au', 'news.com.au', 'perthnow.com.au', 'adelaidenow.com.au', 'dailytelegraph.com.au',]),
     ('tribune', ['orlandosentinel.com','redeyechicago.com','chicagotribune.com','dailypress.com','sun-sentinel.com','baltimoresun.com','courant.com','mcall.com',]),
+    ('medianews', ['dailybulletin.com', 'sgvtribune.com', 'dailybreeze.com', 'presstelegram.com', 'sbsun.com', 'pasadenastarnews.com',]),
+    ('trinity mirror', ['mirror.co.uk', 'irishmirror.ie', 'dailyrecord.co.uk']),
+    ('people', ['people.com', 'peoplestylewatch.com']),
+    ('msn-anz', ['ninemsn.com.au', 'msn.co.nz']),
 ]
 
 for name, domains in AFFILIATE_GROUPS:

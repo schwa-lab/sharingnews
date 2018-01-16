@@ -5,6 +5,12 @@ from django.contrib import admin
 
 MONTH_PATTERN = '201[0-9](?:[01][0-9])?'
 
+js_info_dict = {
+###        'domain': 'likeable',
+###        'packages': ('likeable',),
+}
+
+
 urlpatterns = patterns('',
     url(r'^article/(?P<id>[0-9]+)$', 'likeable.views.article', name='article'),
     url(r'^article/(?P<id>[0-9]+)/raw$', 'likeable.views.article_raw', name='article_raw'),
@@ -21,4 +27,5 @@ urlpatterns = patterns('',
     url(r'^export(?:/)?', 'likeable.views.export', name='export'),
 
     url(r'^admin/', include(admin.site.urls)),
+    url(r'^jsi18n/$', 'django.views.i18n.javascript_catalog', js_info_dict),
 ) + static(settings.STATIC_URL, name='static')

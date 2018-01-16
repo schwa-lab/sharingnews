@@ -1,8 +1,9 @@
 import tempfile
-import zipfile
 
 from django.core.servers.basehttp import FileWrapper
 from django.http import HttpResponse
+
+from .export import build_zip
 
 
 def send_zipfile(request, files, zipfilename):
@@ -12,14 +13,7 @@ def send_zipfile(request, files, zipfilename):
     be used for large dynamic PDF files.
     """
     temp = tempfile.TemporaryFile()
-    archive = zipfile.ZipFile(temp, 'w', zipfile.ZIP_DEFLATED)
-    for filename, content in files:
-        if hasattr(content, 'read'):
-            content = content.read()
-        elif not isinstance(content, str):
-            content = content.encode('utf8')
-        archive.writestr(filename, content)
-    archive.close()
+    build_zip(temp, files)
     length = temp.tell()
     print('Content-Length:', length)
     temp.seek(0)
