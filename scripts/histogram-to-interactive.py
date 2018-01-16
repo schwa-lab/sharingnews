@@ -62,6 +62,7 @@ with open(os.path.join(OUT_DIR, 'style.css'), 'w') as fstyle:
     print('.hist tr span { border: 1px solid black; white-space: nowrap }', file=fstyle)
     print('.hist tr span, .hist tr span > a { display: inline-block; text-decoration: none; }', file=fstyle)
     print('.hist tr span > a:hover { background: blue }', file=fstyle)
+    print('#indexlisting > li { float: left; width: 15em }', file=fstyle)
     N_FB_GROUPS = max(g for _, g, _, _, _, _ in reader) + 1
     N_TW_GROUPS = max(g for _, _, g, _, _, _ in reader) + 1
     for i in range(N_FB_GROUPS):
@@ -71,7 +72,6 @@ with open(os.path.join(OUT_DIR, 'style.css'), 'w') as fstyle:
     print('.tooltip-inner { white-space: normal;}', file=fstyle)
 
 findex = open(os.path.join(OUT_DIR, 'index.html'), 'w')
-print('<ul>', file=findex)
 header = []
 header.append('''
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
@@ -85,12 +85,18 @@ header.append('''
               ''')
 header.append('<meta http-equiv="Content-Type" content="text/html; charset=utf-8">')
 header.append('<link href="style.css" rel="stylesheet">')
+print('\n'.join(header), file=findex)  # partial header for index
 header.append('<ol class="breadcrumb"><li><a href="index.html">Home</a></li></ol>')
 header.append('<table id="twlegend" style="position: fixed; right: 2em; top: 1em">')
 header.append('<thead><tr><th>Tweets</th></tr></thead>')
 for i in range(N_TW_GROUPS):
     header.append('<tr class="tw{}"><td>{}</td></tr>'.format(i, group_label(i)))
 header.append('</table>')
+
+print('<body>', file=findex)
+print('<h1>Likeable Engine share count histograms</h1>', file=findex)
+print('<p class="pull-left bg-info" style="width: 15em; margin: 1.45em; padding: .5em; box-shadow: 0 1px 3px rgba(0,0,0,.25)">These interactive histograms show the distribution of Facebook and Twitter share counts among articles tracked by the <a href="http://likeable.share-wars.com">Likeable Engine</a> in the first half of 2014. Articles more shared on Twitter are more red in the histogram. Click a section of a histogram to see an example article.</p>', file=findex)
+print('<ul id="indexlisting">', file=findex)
 
 for domain, tuples in itertools.groupby(sorted(reader), operator.itemgetter(0)):
     tuples = list(tuples)
@@ -102,7 +108,7 @@ for domain, tuples in itertools.groupby(sorted(reader), operator.itemgetter(0)):
     print('\n'.join(header), file=fdomain)
     max_cnt = max(sum(freq for _, _, _, freq, _, _ in fb_tuples if fb_group > 0) for fb_group, fb_tuples in itertools.groupby(tuples, operator.itemgetter(1)))
     print(domain, total, max_cnt, max(fb_group for _, fb_group, _, _, _, _ in tuples), file=sys.stderr)
-    print('<h1>{}</h1>'.format(domain), file=fdomain)
+    print('<h1><a href="http://{0}">{0}</a> share count histogram</h1>'.format(domain), file=fdomain)
     print('<table class="hist">', file=fdomain)
 
     print('<thead><tr><th></th><th>Number of URLs</th></tr>', file=fdomain)
@@ -131,5 +137,5 @@ for domain, tuples in itertools.groupby(sorted(reader), operator.itemgetter(0)):
     print('<script>$(window).load(function() {$(".hist tr span > a").tooltip({html: true});});</script>', file=fdomain)
     fdomain.close()
 
-print('</ul>', file=findex)
+print('</ul></body>', file=findex)
 findex.close()
