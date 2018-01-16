@@ -13,10 +13,13 @@ import datetime
 import pika
 import django
 from django.db import reset_queries
-from likeable.models import utcnow
 
 django.setup()
 logger = None
+
+
+def utcnow():
+    return datetime.datetime.utcnow().replace(tzinfo=pytz.utc)
 
 
 def json_log(**data):
