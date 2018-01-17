@@ -36,11 +36,13 @@ def _format_url_signature(article):
         "selectors": {},
         "specificity": {},
     }
-    if sig.frequent_structure_groups is not None:
-        out['frequent_structure_groups'] = sig.frequent_structure_groups
+    if sig.structure_groups is not None:
+        out['frequent_structure_groups'] = sig.structure_groups
 
     for name in ['body_html', 'body_text', 'headline', 'dateline', 'byline']:
         sel = getattr(sig, name + '_selector')
+        if sel is None:
+            continue
         spec = "signature"
         if sel.startswith(DOMAIN_DEFAULT_CODE):
             sel = sel[len(DOMAIN_DEFAULT_CODE):]
@@ -74,8 +76,8 @@ def get_archive_json(article):
              "site_name": sharewarsurl.site.name,
              "site_url": sharewarsurl.site.url,
              }
-            for spideredurl in article.spideredurl_set
-            for sharewarsurl in spideredurl.sharewarsurl_set
+            for spideredurl in article.spideredurl_set.all()
+            for sharewarsurl in spideredurl.sharewarsurl_set.all()
         ],
         "count": {
             "facebook_shares": _drop_null({
@@ -100,19 +102,19 @@ def get_archive_json(article):
     except Exception:
         pass
     else:
-        article["fetch"]["when"] = down.fetch_when
-        article["fetch"]["html"] = down.html
+        out["fetch"]["when"] = down.fetch_when
+        out["fetch"]["html"] = down.html
         if down.user_agent_spoof is not None:
-            article["fetch"]["user_agent_spoof"] = down.user_agent_spoof
-        
-        article["scrape"] = {
+            out["fetch"]["user_agent_spoof"] = down.user_agent_spoof
+
+        out["scrape"] = {
             "url_group": _format_url_signature(article),
             "when": down.scrape_when, 
             "in_dev_sample": down.in_dev_sample, 
             "structure_sketch_hex": binascii.hexlify(down.structure_sketch),
             "structure_group": down.structure_group,
         }
-        article["extract"] = _drop_null({
+        out["extract"] = _drop_null({
             "body_html": down.body_html,
             "body_text": down.body_text,
             "headline": down.headline,
