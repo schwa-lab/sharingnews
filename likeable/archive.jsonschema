@@ -1,0 +1,124 @@
+{
+    "title": "article"
+    "additionalProperties": false,
+    "properties": {
+        "facebook_id": {},
+        "random_sort_key": {},
+        "canonical_url": {},
+        "facebook_metadata": {
+            "additionalProperties": false,
+            "properties": {
+                "created": {},
+                "updated": {},
+                "type": {},
+                "title": {},
+                "description": {}
+            }
+        },
+        "spider": {
+            "description": "How this URL was spidered by Likeable Engine",
+            "type": "array",
+            "items": {
+                "additionalProperties": false,
+                "properties": {
+                    "url": {},
+                    "when": {},
+                    "likeable_id": {"description": "ID in likeable engine"},
+                    "site_id": {
+                        "description": "Site ID accoridng to likeable engine"
+                    },
+                    "site_name": {},
+                    "site_url": {}
+                }
+            }
+        }
+        "count": {
+            "additionalProperties": false,
+            "properties": {
+                "facebook_shares": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "initial": {},
+                        "2h": {},
+                        "1d": {},
+                        "5d": {},
+                        "longterm": {}
+                    }
+                },
+                "twitter_shares": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "initial": {},
+                        "2h": {},
+                        "1d": {},
+                        "5d": {},
+                        "longterm": {}
+                    }
+                }
+            }
+        },
+        "fetch": {
+            "additionalProperties": false,
+            "properties": {
+                "status": {"description": "HTTP status, or custom error status"},
+                "when": {},
+                "html": {},
+                "user_agent_spoof": {}
+            }
+        },
+        "scrape": {
+            "description": "The rules to scrape a URL are defined by its URL signature. Within that signature group, different ",
+            "additionalProperties": false,
+            "properties": {
+                "url_group": {
+                    "properties": {
+                        "signature": {},
+                        "domain": {"description": "base domain name for rule group"},
+                        "modified_when": {},
+                        "frequent_structure_groups": {
+                            "description": "Up to 5 most frequent structure groups",
+                            "type": "array",
+                            "items": {"type": "number"}
+                        },
+                        "selectors": {
+                            "additionalProperties": false,
+                            "body_html": {},
+                            "body_text": {},
+                            "headline": {},
+                            "dateline": {},
+                            "byline": {},
+                        },
+                        "specificity": {
+                            "description": "each can be \"signature\", \"domain\" or \"global\"",
+                            "additionalProperties": false,
+                            "body_html": {},
+                            "body_text": {},
+                            "headline": {},
+                            "dateline": {},
+                            "byline": {},
+                        }
+                    },
+                },
+                "when": {},
+                "in_dev_sample": {"description": "Is this page chosen to help develop/debug scraper rules?"}
+                "structure_sketch_hex": {
+                    "type": "string",
+                    "description": "minhash of HTML structure (100 32-bit ints) used to cluster documents and debug scraping"
+                },
+                "structure_group": {
+                    "type": "number",
+                    "description": "cluster identified from structure sketch, used to debug scraping"
+                }
+            }
+        },
+        "extract": {
+            "additionalProperties": false,
+            "properties": {
+                "headline": {"type": "string"},
+                "dateline": {"type": "string"},
+                "byline": {"type": "string"},
+                "body_text": {"type": "string"},
+            }
+        }
+    }
+}
