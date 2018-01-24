@@ -56,8 +56,8 @@ def build_basename(article):
         id=article.id,
         domain=article.url_signature.base_domain.replace('.', ''),
         date=published.strftime('%y%m%d'),
-        author=_camelcase(article.downloaded.byline) if article.downloaded.byline else '-',
-        headline=_camelcase(article.downloaded.headline or article.title or 'title missing')
+        author=_camelcase(article.downloaded.byline) if article.downloaded.byline else u'-',
+        headline=_camelcase(article.downloaded.headline or article.title or u'title missing')
     )
 
 

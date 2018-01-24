@@ -305,6 +305,12 @@ class ArticleQS(models.query.QuerySet):
             out = self.all()
         return out.extra(select={field_name: 'CASE {} ELSE {} END'.format(cases, len(bin_max))})
 
+    def bin_all_shares(self, bin_max=FINE_HISTOGRAM_BINS, shares_fields=SHARES_FIELDS, fmt='binned_{}'):
+        qs = self
+        for field in SHARES_FIELDS:
+            qs = qs.bin_shares(bin_max, shares_field=field, field_name=fmt.format(field), null=True)
+        return qs
+
     def annotate_stats(self, field='fb_count_longterm'):
         return self.annotate(count=models.Count('pk'),
                              avg=models.Avg(field),

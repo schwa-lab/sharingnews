@@ -1,6 +1,17 @@
+import operator
+import json
 import binascii
 from likeable.models import Article
 from likeable.scraping import DOMAIN_DEFAULT_CODE, DEFAULT_CODE
+
+
+get_when = operator.itemgetter('when')
+
+
+def _iso8601(dt):
+    if dt is None:
+        return None
+    return dt.isoformat()
 
 
 def _drop_null(d):
@@ -16,8 +27,7 @@ def _format_fetch_status(fetch_status):
         return None
     if fetch_status > 0:
         return 'HTTP %d' % fetch_status
-    return next(k for k, v in REV_CUSTOM_FETCH_STATUS
-                if v == fetch_status)
+    return REV_CUSTOM_FETCH_STATUS[fetch_status]
 
 
 def _format_url_signature(article):
@@ -32,12 +42,12 @@ def _format_url_signature(article):
     out = {
         "signature": sig.signature,
         "domain": sig.base_domain,
-        "modified_when": sig.modified_when,
+        "modified_when": _iso8601(sig.modified_when),
         "selectors": {},
         "specificity": {},
     }
     if sig.structure_groups is not None:
-        out['frequent_structure_groups'] = sig.structure_groups
+        out['frequent_structure_groups'] = [int(x) for x in sig.structure_groups.split(',')]
 
     for name in ['body_html', 'body_text', 'headline', 'dateline', 'byline']:
         sel = getattr(sig, name + '_selector')
@@ -57,41 +67,58 @@ def _format_url_signature(article):
     return out
 
 
+def _format_counts(article, prefix):
+    initial = getattr(article, prefix + '_count_initial')
+    if initial is None:
+        initial = 0
+    c2h = getattr(article, prefix + '_count_2h')
+    if c2h is None:
+        c2h = initial
+    c1d = getattr(article, prefix + '_count_1d')
+    if c1d is None:
+        c1d = c2h
+    c5d = getattr(article, prefix + '_count_5d')
+    if c5d is None:
+        c5d = c1d
+    out = {
+        'initial': initial,
+        '2h': c2h,
+        '1d': c1d,
+        '5d': c5d,
+    }
+    longterm = getattr(article, prefix + '_count_longterm')
+    if longterm:
+        out['longterm'] = longterm
+    return out
+
+
 def get_archive_json(article):
     out = {
         "facebook_id": article.id,
         "canonical_url": article.url,
-        "facebook_metadta": _drop_null({
-            "created": article.fb_created,
-            "updated": article.fb_updated,
+        "facebook_metadata": _drop_null({
+            "created": _iso8601(article.fb_created),
+            "updated": _iso8601(article.fb_updated),
             "type": article.fb_type,
             "title": article.title,
             "description": article.description,
         }),
-        "spider": [
+        "spider": sorted([
             {"url": spideredurl.url,
-             "when": sharewarsurl.when,
+             "when": _iso8601(sharewarsurl.when),
              "likeable_id": sharewarsurl.id,
-             "site_id": sharewarsurl.site.id,
-             "site_name": sharewarsurl.site.name,
-             "site_url": sharewarsurl.site.url,
+             "site_id": sharewarsurl.site.id if sharewarsurl.site is not None else None,
+             "site_name": sharewarsurl.site.name if sharewarsurl.site is not None else None,
+             "site_url": sharewarsurl.site.url if sharewarsurl.site is not None else None,
              }
             for spideredurl in article.spideredurl_set.all()
             for sharewarsurl in spideredurl.sharewarsurl_set.all()
-        ],
+        ], key=get_when),
         "count": {
-            "facebook_shares": _drop_null({
-                "initial": article.fb_count_initial,
-                "2h": article.fb_count_2h,
-                "1d": article.fb_count_1d,
-                "5d": article.fb_count_5d,
-            }),
-            "twitter_shares": _drop_null({
-                "initial": article.tw_count_initial,
-                "2h": article.tw_count_2h,
-                "1d": article.tw_count_1d,
-                "5d": article.tw_count_5d,
-            })
+            "facebook_shares": _format_counts(article, 'fb'),
+            "binned_facebook_shares": _format_counts(article, 'binned_fb'),
+            "binned_twitter_shares": _format_counts(article, 'binned_tw'),
+            "twitter_shares": _format_counts(article, 'tw'),
         },
         "fetch": {
             "status": _format_fetch_status(article.fetch_status),
@@ -102,24 +129,25 @@ def get_archive_json(article):
     except Exception:
         pass
     else:
-        out["fetch"]["when"] = down.fetch_when
+        out["fetch"]["when"] = _iso8601(down.fetch_when)
         out["fetch"]["html"] = down.html
         if down.user_agent_spoof is not None:
             out["fetch"]["user_agent_spoof"] = down.user_agent_spoof
 
         out["scrape"] = {
             "url_group": _format_url_signature(article),
-            "when": down.scrape_when, 
-            "in_dev_sample": down.in_dev_sample, 
-            "structure_sketch_hex": binascii.hexlify(down.structure_sketch),
+            "when": _iso8601(down.scrape_when),
+            "in_dev_sample": down.in_dev_sample,
+            "structure_sketch_hex": binascii.hexlify(down.structure_sketch) if down.structure_sketch is not None else None,
             "structure_group": down.structure_group,
         }
         out["extract"] = _drop_null({
             "body_html": down.body_html,
             "body_text": down.body_text,
+            "lead": down.first_paragraph,
             "headline": down.headline,
             "dateline": down.dateline,
             "byline": down.byline,
         })
 
-    return out
+    return json.dumps(out, indent=2, separators=(',', ': '))
