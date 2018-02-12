@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 from functools import partial
+import sys
 import re
 import csv
 import io
@@ -49,10 +50,13 @@ def _camelcase(s, max_n_words=15):
     return ''.join(re.sub(r'[^\w\s]|_', '', s).title().split()[:max_n_words])
 
 
-def build_basename(article):
+def build_basename(article, include_id=False):
     # Approximation of DailyTelegraph_150114_BenSmith_WhyThisResearchIsNewsworthy_headline
     published = article.downloaded.parse_datetime(warn=False) or article.spider_when
-    return '{domain}_{date}_{author}_{headline}'.format(
+    fmt = '{domain}_{date}_{author}_{headline}'
+    if include_id:
+        fmt = '{id}_' + fmt
+    return fmt.format(
         id=article.id,
         domain=article.url_signature.base_domain.replace('.', ''),
         date=published.strftime('%y%m%d'),
@@ -61,11 +65,11 @@ def build_basename(article):
     )
 
 
-def export_folders(article, basename=None, ascii=True):
+def export_folders(article, basename=None, ascii=True, include_id=False):
     """Generates (path, io.StringIO) tuples
     """
     if basename is None:
-        basename = build_basename(article)
+        basename = build_basename(article, include_id=include_id)
 
     ext = '.ascii.txt' if ascii else '.txt'  # NOQA
     format_field = partial(_format_text_field, article, ascii=ascii)
@@ -79,7 +83,7 @@ def export_folders(article, basename=None, ascii=True):
     yield fmt('body/{basename}.body{ext}'), format_field('body_text')
 
 
-def gen_export_folders(groups, articles, BATCH_SIZE=200, measure_names=['share_measure'], group_dirs=None):
+def gen_export_folders(groups, articles, BATCH_SIZE=200, measure_names=['share_measure'], group_dirs=None, include_id=False, ascii=True):
     """
 
     - groups is a list of lists of (article id, *measures)
@@ -109,13 +113,12 @@ def gen_export_folders(groups, articles, BATCH_SIZE=200, measure_names=['share_m
                 article = lookup[row[0]]
                 if article.fetch_status != 200:
                     # HACK!
-                    import sys
                     print(article.id, article.fetch_status, file=sys.stderr)
                     index_writer.writerow([group_num,] + list(row[1:]) + ['<JUNK: status %d>' % article.fetch_status,
                                            article.id, article.url,
                                            '', ''])
                     continue
-                basename = build_basename(article)
+                basename = build_basename(article, include_id=include_id)
                 seen_names[basename] += 1
                 if seen_names[basename] > 1:
                     print('Duplicate basename for %d: %s' % (article.id, basename), file=sys.stderr)
@@ -134,7 +137,7 @@ def gen_export_folders(groups, articles, BATCH_SIZE=200, measure_names=['share_m
                                        article.id, article.url,
                                        pubdate,
                                        word_count])
-                for filename, content in export_folders(article, basename=basename, ascii=True):
+                for filename, content in export_folders(article, basename=basename, ascii=ascii, include_id=include_id):
                     yield group_dir + filename, content
 
         index_file.seek(0)

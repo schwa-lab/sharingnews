@@ -1,3 +1,6 @@
+from __future__ import print_function
+
+import sys
 import operator
 import json
 import binascii
@@ -92,7 +95,7 @@ def _format_counts(article, prefix):
     return out
 
 
-def get_archive_json(article):
+def get_archive_json(article, exclude=None):
     out = {
         "facebook_id": article.id,
         "canonical_url": article.url,
@@ -150,4 +153,13 @@ def get_archive_json(article):
             "byline": down.byline,
         })
 
+    if exclude:
+        for path in exclude:
+            blob = out
+            try:
+                for k in path[:-1]:
+                    blob = blob[k]
+                del blob[path[-1]]
+            except KeyError:
+                pass
     return json.dumps(out, indent=2, separators=(',', ': '))
