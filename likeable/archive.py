@@ -96,6 +96,8 @@ def _format_counts(article, prefix):
 
 
 def get_archive_json(article, exclude=None):
+    """ For format see archive.jsonschema
+    """
     out = {
         "facebook_id": article.id,
         "canonical_url": article.url,
