@@ -16,6 +16,9 @@ from likeable.countapis import FBBatchFetcher, FB_URL_FIELDS
 from likeable.cleaning import url_signature, strip_subdomains
 from likeable.models import Article, UrlSignature, ShareWarsUrl, SpideredUrl
 
+import django
+django.setup()
+
 
 UTC = tzutc()
 
@@ -103,7 +106,13 @@ def create_article(record, fb_record):
             json_log(error='Got no og_object from Facebook', sharewars_id=record['article_Id'], initial_url=record['article_Url'])
         return None, False
     initial_url = record['article_Url']
-    final_url = fb_record['og_object']['url']
+    try:
+        final_url = fb_record['og_object']['url']
+    except KeyError:
+        # JOEL GIVES IN TO UNDOCUMENTED FB API CHANGES: 2016-07-20
+        final_url = initial_url
+###        json_log(keys=fb_record['og_object'].keys())
+###        raise
     with transaction.atomic():
         initial_sig = _get_or_create_sig(url_signature(initial_url.encode('utf8')))
     if initial_url == final_url:
@@ -113,7 +122,7 @@ def create_article(record, fb_record):
             final_sig = _get_or_create_sig(url_signature(final_url.encode('utf8')))
 
     with transaction.atomic():
-        article, created = Article.objects.get_or_create(id=fb_record['og_object']['id'], defaults={'url': fb_record['og_object']['url']})
+        article, created = Article.objects.get_or_create(id=fb_record['og_object']['id'], defaults={'url': final_url})
         spider_when = _parse_iso8601(record['article_Date'])
         site_id = int(record['site_Id'])
 
@@ -127,7 +136,7 @@ def create_article(record, fb_record):
         if not created and spider_when >= article.spider_when and article.url:
             return article, False
 
-        article.url = fb_record['og_object']['url']
+        article.url = final_url
         article.url_signature = final_sig
         article.title = fb_record['og_object'].get('title')
         article.fb_has_title = article.title is not None

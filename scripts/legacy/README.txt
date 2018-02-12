@@ -1,1 +1,1 @@
-These scripts pertain to early analysis of the data, e.g. without a database.
+These scripts pertain to early analysis of the data, e.g. without a database and queuing infrastructure.

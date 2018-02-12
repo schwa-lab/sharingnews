@@ -1,3 +1,7 @@
+"""
+Given a list of base domains on STDIN (or a blank line for global stats),
+calculates and outputs specified (lower-trimmed) share quantiles per domain.
+"""
 from __future__ import print_function, division
 import csv
 import sys
